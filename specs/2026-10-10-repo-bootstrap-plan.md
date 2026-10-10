@@ -116,9 +116,7 @@ def test_gitignore_has_no_trailing_comments(repo_root: Path) -> None:
     offenders = [
         line
         for line in (repo_root / ".gitignore").read_text(encoding="utf-8").splitlines()
-        if line.strip()
-        and not line.lstrip().startswith("#")
-        and "#" in line
+        if line.strip() and not line.lstrip().startswith("#") and "#" in line
     ]
     assert not offenders, f"trailing comments on .gitignore patterns: {offenders}"
 ```
@@ -144,7 +142,11 @@ dependencies = []
 
 [dependency-groups]
 dev = [
-    "ruff>=0.6",
+    # Pinned exactly, not a floor: the version must match the ruff-pre-commit rev
+    # in .pre-commit-config.yaml, or `ruff format --check` disagrees between a
+    # contributor's machine and CI. Ruff >=0.14 also formats Python code blocks
+    # inside Markdown, which changes what a whole-repo format check sees.
+    "ruff==0.17.0",
     "mypy>=1.11",
     "pytest>=8.3",
     "pytest-cov>=5.0",
@@ -155,6 +157,10 @@ dev = [
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+# specs/ holds frozen design records: the spec and the implementation plan as
+# they were approved. Reformatting them would rewrite the historical record and
+# bury the prose that decisions were argued from, so they are never formatted.
+extend-exclude = ["specs"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B", "SIM"]
@@ -285,7 +291,8 @@ repos:
       - id: check-merge-conflict
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.6.9
+    # This rev MUST equal the pinned ruff version in pyproject.toml's dev group.
+    rev: v0.17.0
     hooks:
       - id: ruff
         args: ["--fix"]
