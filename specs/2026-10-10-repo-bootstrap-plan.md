@@ -86,7 +86,7 @@ REQUIRED_ROOT_FILES = (
     ".pre-commit-config.yaml",
     ".editorconfig",
 )
-REQUIRED_ROOT_DIRS = ("tests", "data")
+REQUIRED_ROOT_DIRS = ("tests",)
 
 
 @pytest.mark.parametrize("name", REQUIRED_ROOT_FILES)
@@ -296,10 +296,11 @@ repos:
     hooks:
       - id: nbstripout
 
-  - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.21.2
-    hooks:
-      - id: gitleaks
+# Deliberately no gitleaks hook here. The upstream gitleaks hook uses
+# `language: golang` and requires a Go toolchain, which this project does not
+# depend on; adding it would make `pre-commit run --all-files` unrunnable on a
+# machine without Go. Secret scanning is enforced in CI by the `secrets` job,
+# which uses the prebuilt gitleaks action. See docs/SECURITY.md.
 ```
 
 `tests/conftest.py` — exact content. This fixture is the interface every later task uses.
@@ -476,7 +477,7 @@ Keep every documented command literally runnable — do not document a command t
 - [ ] **Step 4: Write the remaining documents**
 
 - `CONTRIBUTING.md` — branch naming (`firmware/*`, `data/*`, `notebooks/*`, `webapp/*`, `docs/*`, `chore/*`, `specs/*`); Conventional Commits with lane scope; the pull request flow; and an **"Adding a teammate"** section with the three steps: invite as a collaborator, add the handle to `.github/CODEOWNERS`, add the contributor to `CITATION.cff`. State that the required-approval ruleset is enabled at this moment, not before (spec §7.4).
-- `SECURITY.md` — no secrets in the repository; `firmware/secrets.py` and `.env` are gitignored and `secrets.example.py` is the template; how gitleaks runs in pre-commit and CI; how to report a leak; how to rotate a compromised credential; and the prohibition on real patient data referencing `docs/DATA.md`.
+- `SECURITY.md` — no secrets in the repository; `firmware/secrets.py` and `.env` are gitignored and `secrets.example.py` is the template; **secret scanning runs as the `secrets` CI job, not as a pre-commit hook** (state why: the upstream gitleaks hook needs a Go toolchain, so it would make `pre-commit run --all-files` unrunnable on a machine without Go); how to report a leak; how to rotate a compromised credential; and the prohibition on real patient data referencing `docs/DATA.md`.
 - `CHANGELOG.md` — Keep a Changelog structure with an `Unreleased` section and the `0.1.0` bootstrap entry.
 - `LICENSE` — full Apache License 2.0 text (spec §11 leaves this confirmable; Apache-2.0 is the proposed default because the web app may be deployed publicly).
 - `CITATION.cff` — `cff-version: 1.2.0`, message, `title`, `type: software`, `license: Apache-2.0`, and an `authors` list containing `@andrewhmir`. The event publishes qualifying repositories with citation to each contributing member, so every teammate is added here.
@@ -866,6 +867,11 @@ def test_sensitive_paths_are_gitignored(repo_root: Path, tmp_path: Path) -> None
 @pytest.mark.parametrize("name", COMMITTED_DATA_FILES)
 def test_committed_data_fixture_exists(repo_root: Path, name: str) -> None:
     assert (repo_root / name).is_file(), f"missing committed data file: {name}"
+
+
+def test_data_tree_root_exists(repo_root: Path) -> None:
+    """The data lane owns this assertion; it deliberately does not appear in Task 1."""
+    assert (repo_root / "data").is_dir()
 
 
 def test_sample_fixture_has_expected_schema(repo_root: Path) -> None:
