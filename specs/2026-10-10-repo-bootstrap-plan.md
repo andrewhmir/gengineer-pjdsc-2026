@@ -151,6 +151,11 @@ dev = [
     "pytest>=8.3",
     "pytest-cov>=5.0",
     "nbmake>=1.5",
+    # Present so the documentable command `uv run nbstripout --verify <notebook>` works.
+    # The pre-commit hook is the primary enforcement, but it cannot run on the maintainer's
+    # machine (see the root AGENTS.md), so the CLI is the fallback an agent or human can
+    # actually execute. Keeping the command runnable is worth one dev dependency.
+    "nbstripout>=0.8",
     "pre-commit>=3.8",
 ]
 
@@ -579,24 +584,35 @@ def test_claude_md_imports_agents_md(repo_root: Path) -> None:
     assert "@AGENTS.md" in content
 
 
-def test_root_agents_states_hard_prohibitions(repo_root: Path) -> None:
+def test_root_agents_states_every_hard_prohibition(repo_root: Path) -> None:
+    """One assertion per prohibition, so deleting any single rule turns this red.
+
+    An either/or phrase check would stay green if the secrets or RA 10173 rules
+    were removed, which is the defect this test exists to prevent.
+    """
     content = (repo_root / "AGENTS.md").read_text(encoding="utf-8").lower()
-    assert "no direct commits to main" in content or "never commit directly to `main`" in content
+    assert "never commit directly to `main`" in content
     assert "data/raw" in content
+    assert "data/interim" in content
+    assert "firmware/secrets.py" in content
+    assert ".env" in content
+    assert "10173" in content
+    assert "firmware/lib/" in content
+
 
 
 def test_firmware_agents_protects_vendored_code(repo_root: Path) -> None:
-    """REQ-053."""
+    """REQ-053. The vendored-read-only rule and the language subset are both needed."""
     content = (repo_root / "firmware/AGENTS.md").read_text(encoding="utf-8").lower()
-    assert "lib/" in content
-    assert "never" in content or "do not" in content
-    assert "dataclass" in content or "circuitpython" in content
+    assert "never edit" in content and "lib/" in content
+    assert "dataclasses" in content
+    assert "match" in content
 
 
 def test_webapp_agents_withholds_framework_decision(repo_root: Path) -> None:
     """An agent must not invent a framework that has not been chosen."""
     content = (repo_root / "webapp/AGENTS.md").read_text(encoding="utf-8").lower()
-    assert "not been" in content or "no framework" in content or "undecided" in content
+    assert "no framework has been chosen" in content
 ```
 
 - [ ] **Step 2: Run the test to verify it fails**
@@ -628,7 +644,7 @@ Claude-specific guidance below this line only; do not duplicate `AGENTS.md`.
 
 - [ ] **Step 4: Write the lane `AGENTS.md` files**
 
-- `firmware/AGENTS.md` — **never edit anything in `firmware/lib/`; it is vendored third-party code** and is refreshed by re-copying from the Adafruit bundle. CircuitPython is not CPython: no `dataclasses`, no `match`, no `X | Y` type syntax, stdlib plus bundle only. `firmware/` is copied wholesale onto the `CIRCUITPY` drive and **must not import from the repository root**. `code.py` is the auto-running entry point. Hardware access goes behind a seam so host-side tests can inject fakes. CI can only prove the code byte-compiles; it cannot prove the code runs on the board — a human must flash it to verify.
+- `firmware/AGENTS.md` — **never edit anything in `firmware/lib/`; it is vendored third-party code** and is refreshed by re-copying from the Adafruit bundle. The lane is flat and packaged by copy, so a new first-party module is a sibling of `code.py` at the firmware root, which the board already resolves — **do not add first-party modules to `firmware/lib/`, because that directory is vendored and out of review scope.** (State the two together; describing `lib/` as the place for shared code contradicts the read-only rule and leads an agent to bury its own module where review does not look.) CircuitPython is not CPython: no `dataclasses`, no `match`, no `X | Y` type syntax, stdlib plus bundle only. `firmware/` is copied wholesale onto the `CIRCUITPY` drive and **must not import from the repository root**. `code.py` is the auto-running entry point. Hardware access goes behind a seam so host-side tests can inject fakes. CI can only prove the code byte-compiles; it cannot prove the code runs on the board — a human must flash it to verify.
 - `notebooks/AGENTS.md` — clear outputs before committing (`nbstripout` enforces this); no absolute paths; logic needed by more than one notebook belongs in an importable module, not in a cell; set deterministic seeds; never read from `data/raw/` in a committed output.
 - `tests/AGENTS.md` — already written in Task 1, Step 4. Verify it exists and add the `firmware` fake-injection note if it is missing.
 - `webapp/AGENTS.md` — state plainly that **no framework has been chosen and no framework decision has been made**; that the lane is a placeholder until the competition problem is fixed; and that an agent must not scaffold a framework, add dependencies, or restructure the repository to accommodate a web app until a human chooses one.
