@@ -21,10 +21,11 @@ secret is public even if a later commit deletes it.
 
 Both real files are listed in [`.gitignore`](.gitignore). The templates contain placeholder
 keys only, with no real values, and exist so that a contributor can copy one and fill it
-in locally:
+in locally. `.env.example` is present now; `firmware/secrets.example.py` arrives with the
+firmware lane, so the first line below only works once that lane has landed:
 
 ```console
-cp firmware/secrets.example.py firmware/secrets.py
+cp firmware/secrets.example.py firmware/secrets.py   # after the firmware lane lands
 cp .env.example .env
 ```
 

@@ -54,7 +54,7 @@ artemiui/pjdsc26-website. https://github.com/artemiui/pjdsc26-website/blob/main/
 
 This is the authoritative document for the competition's theme, topic list, mechanics,
 rubric, and deliverables, and it is the source of the theme title, the ten official
-topics, the 20-slide and 3-minute limits, the five judging criteria, and the event's
+topics, the 20-slide and 3-minute limits, the six judging criteria, and the event's
 commitment to publish qualifying projects with citation to each contributing member. It
 is a Markdown file in the event's website repository rather than a PDF, so the URL above
 is the citable locator. A permanent copy of this file is **not** committed here; the

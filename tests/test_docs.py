@@ -1,5 +1,6 @@
 """Documentation completeness and rubric-driven artifacts (REQ-014, REQ-063)."""
 
+import re
 from pathlib import Path
 
 import pytest
@@ -17,6 +18,23 @@ REQUIRED_DOCS = (
     "docs/DATA.md",
     "docs/SOURCES.md",
     "docs/SETUP.md",
+)
+
+FENCED_CODE = re.compile(r"^```.*?^```", re.DOTALL | re.MULTILINE)
+INLINE_LINK = re.compile(r"\[[^\]]*\]\(([^)\s]+)")
+EXTERNAL_PREFIXES = ("http://", "https://", "mailto:", "#")
+
+DOCUMENTS_TO_SCAN = (
+    "AGENTS.md",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "README.md",
+    "SECURITY.md",
+    "docs/ARCHITECTURE.md",
+    "docs/DATA.md",
+    "docs/README.md",
+    "docs/SETUP.md",
+    "docs/SOURCES.md",
 )
 
 
@@ -49,3 +67,31 @@ def test_data_doc_prohibits_personal_health_data(repo_root: Path) -> None:
     data_doc = (repo_root / "docs/DATA.md").read_text(encoding="utf-8")
     assert "10173" in data_doc
     assert "real patient" in data_doc.lower() or "personally identifiable" in data_doc.lower()
+
+
+def test_link_check_has_documents_to_scan(repo_root: Path) -> None:
+    """Guard: the link check below must not pass merely because it scanned nothing."""
+    assert len(markdown_documents(repo_root)) >= 10
+
+
+def markdown_documents(repo_root: Path) -> list[Path]:
+    """Markdown a reader navigates from the repository root or from `docs/`.
+
+    `specs/` is deliberately excluded: it is a frozen controller-owned record that
+    deliberately references files as they are *planned* rather than as they exist, so a
+    link there is not a defect.
+    """
+    return sorted(list(repo_root.glob("*.md")) + list((repo_root / "docs").glob("*.md")))
+
+
+@pytest.mark.parametrize("document", DOCUMENTS_TO_SCAN)
+def test_relative_links_resolve(repo_root: Path, document: str) -> None:
+    """A named-document reference that resolves to nothing is worse than no reference."""
+    document_path = repo_root / document
+    text = FENCED_CODE.sub("", document_path.read_text(encoding="utf-8"))
+    for target in INLINE_LINK.findall(text):
+        if target.startswith(EXTERNAL_PREFIXES):
+            continue
+        relative = target.split("#")[0]
+        if relative and not (document_path.parent / relative).exists():
+            pytest.fail(f"{document} links to {target}, which does not exist")

@@ -170,7 +170,7 @@ repository. Prove a solo pull request can merge:
 
 ```bash
 git switch -c chore/verify-ruleset
-git commit --allow-empty -m "chore: verify ruleset allows solo merge"
+git commit --allow-empty -m "chore(docs): verify ruleset allows solo merge"
 git push -u origin chore/verify-ruleset
 gh pr create --fill --base main
 gh pr view --json mergeable,mergeStateStatus

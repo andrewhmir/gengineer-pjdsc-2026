@@ -164,7 +164,7 @@ scores reproducibility. Do not commit the downloaded data alongside it.
 
 | Concern | Rule |
 |---|---|
-| Committed file size | **No committed file over 1 MB.** This is checked by the test suite and by a pre-commit hook. |
+| Committed file size | **No committed file over 1 MB.** Enforced by the `check-added-large-files` pre-commit hook (`--maxkb=1024`), which is configured in [`.pre-commit-config.yaml`](../.pre-commit-config.yaml). Note that this hook **cannot currently run on the maintainer's machine** (see the known environment constraints in [`../AGENTS.md`](../AGENTS.md#known-environment-constraints)), so today the rule is enforced by review rather than by a gate that runs; a test-level check lands with the final verification task. |
 | Sample fixtures | Tens of rows, not thousands. Small enough to read in a diff. |
 | Notebook outputs | Stripped on commit by `nbstripout`; a committed notebook must not carry a large embedded table. |
 | Data formats | Prefer text formats that diff well (CSV, JSONL) for fixtures. Minimise and document any binary format you must use. |

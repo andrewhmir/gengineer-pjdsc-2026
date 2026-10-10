@@ -23,6 +23,7 @@ keywords:
   - web application
 authors:
   - given-names: Andrew
+    family-names: ALANGCAO
     alias: andrewhmir
     website: "https://github.com/andrewhmir"
 version: 0.1.0
@@ -36,5 +37,5 @@ date-released: "2026-10-10"
 # `given-names` / `family-names` / `alias` fields, plus the optional
 # `affiliation` and `orcid` fields.
 #
-# TODO(maintainer): the primary author's `family-names` is intentionally not
-# guessed here. Add it, and any teammate's ORCID, before the final submission.
+# TODO(maintainer): teammates' `orcid` identifiers are not yet known. Add them
+# as each teammate is added, before the final submission.

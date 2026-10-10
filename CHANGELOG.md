@@ -58,3 +58,4 @@ analysis or firmware feature is implemented at this version.
   [`docs/DATA.md`](docs/DATA.md).
 
 [Unreleased]: https://github.com/andrewhmir/gengineer-pjdsc-2026/commits/main
+[0.1.0]: https://github.com/andrewhmir/gengineer-pjdsc-2026/tags

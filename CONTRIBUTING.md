@@ -89,11 +89,12 @@ uv run mypy
 uv run pytest
 ```
 
-`pre-commit run --all-files` is also configured and is the intended local gate, but it
-**cannot run on the maintainer's current machine**: hook-environment creation fails with a
-Windows virtualenv cache `WinError 5`. That is a known environment defect and not a
-repository problem; until it is resolved, the four commands above plus CI are the
-equivalent gates. Do not weaken `.pre-commit-config.yaml` to work around it.
+`pre-commit run --all-files` is also configured and is the intended local gate, covering
+whitespace, end-of-file, YAML/TOML/JSON validity, large files, merge conflicts, `ruff`, and
+`nbstripout`. If your machine cannot run it, the four commands above plus CI are the
+equivalent gates — check the known environment constraints in [`AGENTS.md`](AGENTS.md)
+before assuming the repository is broken, and do not weaken `.pre-commit-config.yaml` to
+work around a local problem.
 
 ### Review
 
@@ -165,7 +166,8 @@ bootstrap has assigned rules to but not yet created; each lane task adds its fil
 - **Never commit anything under `data/raw/` or `data/interim/`** — see
   [`docs/DATA.md`](docs/DATA.md).
 - **Never commit `firmware/secrets.py` or `.env`.** Commit
-  `firmware/secrets.example.py` and `.env.example` instead.
+  `firmware/secrets.example.py` and `.env.example` instead. `firmware/secrets.example.py`
+  arrives with the firmware lane; `.env.example` is already present.
 - **Never commit real patient or personally identifiable health data.** Data Privacy Act
   of 2012 (RA 10173).
 - **Never edit anything in `firmware/lib/`** — it is vendored third-party code.
