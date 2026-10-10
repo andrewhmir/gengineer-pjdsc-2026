@@ -142,7 +142,9 @@ dependencies = [
     # The analysis lane. The notebook template and every analysis notebook read
     # committed fixtures from data/samples/ with pandas, and CI runs the template
     # through nbmake, so pandas is needed at run time — not only for tooling.
-    "pandas>=2.2",
+    # The <4 bound is deliberate: it keeps the constraint inside the majors actually
+    # exercised here, so a future pandas 4 is a decision rather than a lock refresh.
+    "pandas>=2.2,<4",
 ]
 
 [dependency-groups]
@@ -1674,6 +1676,8 @@ Create `tests/test_final_verification.py`:
 ```python
 """Whole-repository acceptance checks that no single lane test owns."""
 
+import json
+import re
 import subprocess
 from pathlib import Path
 
@@ -1741,6 +1745,58 @@ def test_every_lane_exists(repo_root: Path) -> None:
     do not exist until Tasks 4-7."""
     for lane in ("firmware", "notebooks", "webapp", "data", "docs", "specs", "tests"):
         assert (repo_root / lane).is_dir(), f"lane {lane}/ is documented but absent"
+
+
+def test_suite_pins_ruff_to_the_pre_commit_rev(repo_root: Path) -> None:
+    """The two cases that must agree, or `ruff format --check` differs locally and in CI."""
+    pyproject = (repo_root / "pyproject.toml").read_text(encoding="utf-8")
+    precommit = (repo_root / ".pre-commit-config.yaml").read_text(encoding="utf-8")
+    pin = re.search(r'"ruff==([0-9.]+)"', pyproject)
+    rev = re.search(r"ruff-pre-commit\s*\n\s*#.*\n\s*rev:\s*v([0-9.]+)", precommit)
+    assert pin and rev, "could not locate the ruff pin and the pre-commit rev"
+    assert pin.group(1) == rev.group(1), (
+        f"ruff is pinned to {pin.group(1)} but the pre-commit rev is v{rev.group(1)}"
+    )
+
+
+def test_every_lane_documented_as_planned_actually_is_planned(repo_root: Path) -> None:
+    """Task 8's lane map must not call a lane 'planned' after its task has landed.
+
+    This is the assertion that would have caught `data/` staying 'planned' after Task 5
+    created it, and it stops the same drift recurring as later lanes land."""
+    readme = (repo_root / "README.md").read_text(encoding="utf-8")
+    for lane in ("firmware", "notebooks", "webapp", "data"):
+        if (repo_root / lane).is_dir() and (repo_root / lane / "README.md").is_file():
+            row = re.search(rf"^\|.*`?{lane}/`?.*$", readme, re.MULTILINE)
+            assert row, f"README has no lane-map row for {lane}/"
+            assert "planned" not in row.group(0).lower(), (
+                f"{lane}/ has landed but its README row still says 'planned'"
+            )
+
+
+def test_notebook_relative_paths_resolve_on_disk(repo_root: Path) -> None:
+    """Close the class of defect that was invisible to the unit suite.
+
+    Both Task 6 defects — the undeclared pandas import and the repository-root fixture
+    path — passed `uv run pytest` and were caught only by `--nbmake`, because the static
+    notebook tests inspect JSON and never resolve a path. This test resolves each
+    notebook's declared data paths against the notebook's OWN directory first, matching
+    nbmake's working directory (`nb_run.py`: `c.execute(cwd=self.filename.parent)`), so a
+    future notebook with an unresolvable path fails locally rather than only in CI.
+    """
+    for notebook in sorted((repo_root / "notebooks").glob("*.ipynb")):
+        document = json.loads(notebook.read_text(encoding="utf-8"))
+        source = "\n".join(
+            "".join(cell["source"])
+            for cell in document["cells"]
+            if cell["cell_type"] == "code"
+        )
+        for relative in re.findall(r'read_csv\(\s*["\']([^"\']+)["\']', source):
+            resolved = (notebook.parent / relative).resolve()
+            assert resolved.is_file(), (
+                f"{notebook.name} reads {relative!r}, which resolves to {resolved} "
+                "relative to the notebook and does not exist"
+            )
 ```
 
 - [ ] **Step 2: Add `httpx` to the dev dependency group**
