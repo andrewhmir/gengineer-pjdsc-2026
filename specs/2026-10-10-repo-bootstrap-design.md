@@ -409,7 +409,8 @@ Labels: `lane:firmware`, `lane:data`, `lane:notebooks`, `lane:webapp`, `lane:doc
 
 - Nothing under `data/raw/` or `data/interim/` is committed.
 - `data/samples/` holds small committed fixtures so tests and notebooks run without the full
-  dataset. Bootstrap commit includes a small public-health-shaped sample in JSONL plus its
+  dataset. Bootstrap commit includes a small public-health-shaped sample in CSV
+(`data/samples/public_health_indicators.csv`, header `region,indicator,year,value`) plus its
   provenance.
 - The full dataset is retrieved by a documented script; its source, license, and APA 7th
   citation live in `docs/SOURCES.md`.

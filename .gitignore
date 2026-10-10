@@ -15,6 +15,13 @@ venv/
 coverage.xml
 htmlcov/
 
+# pytest's tmp_path root. On this machine tempfile.gettempdir() resolves to the
+# working directory, so pytest creates pytest-of-<user>/ at the repository root
+# whenever a test uses the tmp_path fixture. The unused tmp_path parameters have
+# been removed from the tests; this is the safety net so a future tmp_path user
+# cannot leave committable junk behind.
+pytest-of-*/
+
 # --- Secrets: never commit ---
 .env
 .env.local

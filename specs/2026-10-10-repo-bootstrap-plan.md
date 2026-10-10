@@ -880,7 +880,7 @@ COMMITTED_DATA_FILES = (
 )
 
 
-def test_sensitive_paths_are_gitignored(repo_root: Path, tmp_path: Path) -> None:
+def test_sensitive_paths_are_gitignored(repo_root: Path) -> None:
     for relative in GITIGNORED_PATHS:
         result = subprocess.run(
             ["git", "check-ignore", "-q", relative],
