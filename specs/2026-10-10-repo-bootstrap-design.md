@@ -495,12 +495,15 @@ gh auth status   # active account must read andrewhmir
 ```
 
 **Known constraint:** `gh auth switch` writes to `%APPDATA%\GitHub CLI\hosts.yml`, which is
-outside the session workspace and is **blocked by the confined file sandbox**. Inside a
-confined agent session the switch fails with `Access is denied`. Therefore:
+outside the session workspace and was **blocked by the confined file sandbox** that was in
+force when this spec was written.
 
-- The agent can create and verify the entire **local** repository.
-- The **remote creation and push** must either be run by the human, or run in an unconfined
-  session. A copy-paste runbook of exact commands is produced as part of the deliverable.
+> **Superseded 2026-10-10.** The session's file policy was subsequently raised to
+> `danger-full-access`, which removes the restriction. Remote creation, push, and ruleset
+> application are therefore performed by the agent as an ordinary implementation task
+> (implementation plan Task 11) rather than handed to the maintainer as a runbook. The
+> switch step is retained in `docs/SETUP.md` because it remains required whenever the
+> active `gh` account is not `andrewhmir`.
 
 ### 10.2 Repository location
 
