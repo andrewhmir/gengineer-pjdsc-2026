@@ -38,19 +38,17 @@ def test_claude_md_imports_agents_md(repo_root: Path) -> None:
 
 
 def test_root_agents_states_every_hard_prohibition(repo_root: Path) -> None:
-    """One assertion per prohibition, so deleting any single rule turns this red.
-
-    An either/or phrase check would stay green if the secrets or RA 10173 rules
-    were removed, which is the defect this test exists to prevent.
+    """One assertion per prohibition. Each literal is a rule-bearing phrase that
+    occurs exactly once, so deleting that rule turns this red. Asserting a bare
+    token (e.g. "data/raw") would not: the same words appear in the lane map and
+    in the Lane reminders prose.
     """
     content = (repo_root / "AGENTS.md").read_text(encoding="utf-8").lower()
     assert "never commit directly to `main`" in content
-    assert "data/raw" in content
-    assert "data/interim" in content
-    assert "firmware/secrets.py" in content
-    assert ".env" in content
+    assert "never commit anything under `data/raw/` or `data/interim/`" in content
+    assert "never commit `firmware/secrets.py` or `.env`" in content
     assert "10173" in content
-    assert "firmware/lib/" in content
+    assert "never edit anything under `firmware/lib/`" in content
 
 
 def test_firmware_agents_protects_vendored_code(repo_root: Path) -> None:
