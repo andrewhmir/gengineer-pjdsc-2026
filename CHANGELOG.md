@@ -1,0 +1,60 @@
+# Changelog
+
+All notable changes to this project are documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this
+project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+Repository history is Conventional Commits with a lane scope; this file is the
+human-readable summary a judge or a returning teammate can read without walking the log.
+
+## [Unreleased]
+
+### Added
+
+- Nothing yet. The next changes land here.
+
+### Changed
+
+### Fixed
+
+### Security
+
+## [0.1.0] - 2026-10-10
+
+The bootstrap: repository structure, toolchain, data policy, and governance. No data
+analysis or firmware feature is implemented at this version.
+
+### Added
+
+- Root Python toolchain: `pyproject.toml` with `requires-python = ">=3.12"`, a pinned
+  `uv.lock`, `.python-version`, and the development dependency group (`ruff` pinned
+  exactly, `mypy`, `pytest`, `pytest-cov`, `nbmake`, `pre-commit`).
+- `.editorconfig`, `.gitignore` (with no trailing comments on pattern lines, because a
+  trailing comment turns a pattern into a never-matching literal), and
+  `.pre-commit-config.yaml` (whitespace, end-of-file, YAML/TOML/JSON validity, large-file
+  guard, merge-conflict guard, `ruff` lint and format, `nbstripout`).
+- `.gitleaks.toml` with the default rule set extended and a narrow three-file allowlist
+  for committed placeholder templates.
+- Test suite with the `repo_root` fixture and repository smoke tests asserting the layout,
+  the Python pin, and the presence of the scanner configuration.
+- Documentation set: `README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `CHANGELOG.md`,
+  `docs/README.md`, `docs/ARCHITECTURE.md`, `docs/DATA.md`, `docs/SOURCES.md`, and
+  `docs/SETUP.md`.
+- Governance and citation: `LICENSE` (Apache License 2.0), `CITATION.cff` declaring the
+  software entry and its authors, and `.env.example` as the committed template for the
+  gitignored `.env`.
+- Frozen design records in `specs/`: the approved repository bootstrap design and its
+  implementation plan.
+
+### Security
+
+- Secret scanning is enforced by the `secrets` CI job using the free gitleaks CLI. No
+  gitleaks pre-commit hook is configured, deliberately: the upstream hook is declared
+  `language: golang`, so it would make `pre-commit run --all-files` unrunnable on a machine
+  without a Go toolchain.
+- Data privacy rule recorded: no real patient or personally identifiable health data may
+  ever be committed, per the Data Privacy Act of 2012 (RA 10173). See
+  [`docs/DATA.md`](docs/DATA.md).
+
+[Unreleased]: https://github.com/andrewhmir/gengineer-pjdsc-2026/commits/main

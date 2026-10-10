@@ -1,0 +1,40 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "gengineer-pjdsc-2026: Public Health Analytics for PJDSC 2026"
+abstract: >-
+  An entry to the Philippine Junior Data Science Challenge (PJDSC) 2026,
+  organized by the UP Data Science Society under the theme Public Health
+  Analytics. The project integrates a CircuitPython microcontroller sensor
+  node with a web application so that a community-level health signal can be
+  measured, transmitted, and read by a non-technical health worker.
+type: software
+license: Apache-2.0
+license-url: "https://github.com/andrewhmir/gengineer-pjdsc-2026/blob/main/LICENSE"
+repository-code: "https://github.com/andrewhmir/gengineer-pjdsc-2026"
+url: "https://github.com/andrewhmir/gengineer-pjdsc-2026"
+keywords:
+  - public health
+  - public health analytics
+  - data science
+  - Philippines
+  - PJDSC
+  - CircuitPython
+  - microcontroller
+  - web application
+authors:
+  - given-names: Andrew
+    alias: andrewhmir
+    website: "https://github.com/andrewhmir"
+version: 0.1.0
+date-released: "2026-10-10"
+
+# Every contributing team member is added to `authors` above. The event
+# publishes qualifying repositories on UP Data Science Society's official
+# GitHub with citation to each contributing member, so a contributor who is
+# missing from this file is a contributor who is not cited. Add teammates as
+# part of the "Adding a teammate" procedure in CONTRIBUTING.md, using the
+# `given-names` / `family-names` / `alias` fields, plus the optional
+# `affiliation` and `orcid` fields.
+#
+# TODO(maintainer): the primary author's `family-names` is intentionally not
+# guessed here. Add it, and any teammate's ORCID, before the final submission.
