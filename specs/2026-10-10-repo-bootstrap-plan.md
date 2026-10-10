@@ -172,9 +172,11 @@ addopts = "-ra --strict-markers"
 [tool.coverage.run]
 source = ["tests"]
 
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+# This repository ships no importable package (spec §4.1 rule 2), so uv must not
+# try to build or install the project itself. Without this, `uv sync` builds the
+# root project and fails on `readme = "README.md"` until Task 2 creates that file.
+[tool.uv]
+package = false
 ```
 
 `.python-version` — exact content: `3.12`
