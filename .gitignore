@@ -1,0 +1,4 @@
+# --- Tool worktrees and agent scratch (kept out of the repository) ---
+.worktrees/
+.superpowers/
+.agents/
