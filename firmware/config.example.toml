@@ -1,0 +1,37 @@
+# Configuration keys for the sensor node, committed as a documented example.
+#
+# CircuitPython's standard library has NO TOML parser. `tomllib` does not exist on
+# the board, so NOTHING IN THE FIRMWARE READS THIS FILE and there is no plan for it
+# to: do not add a dependency, a hand-rolled parser, or an import of `tomllib` to
+# make the board consume it. This file exists so that the configuration a node
+# needs is written down in one place, in a format a human and a host-side script
+# can read, instead of being implied by scattered constants.
+#
+# The real per-deployment values are the board's secrets.py (see
+# secrets.example.py for the committed template) for anything credential-shaped.
+#
+# To use these values on the board, transcribe them into a first-party module
+# beside code.py — a sibling of code.py at the firmware root, never firmware/lib/,
+# which holds vendored Adafruit bundle code only. See README.md.
+
+[device]
+# Human-readable name of this node. Appears in the payload of each reading, so it
+# must be stable and unique per deployed board.
+name = "pjdsc-node-01"
+
+# How often the node takes and posts a reading, in seconds. Keep it a whole number
+# of seconds; the board's clock is not precise enough for sub-second promises.
+sample_interval_s = 60
+
+[sensors]
+# Sensor keys the node is expected to read. Placeholder names only: no sensor has
+# been chosen or wired yet, so treat these as the shape of the configuration rather
+# than as a bill of materials.
+#
+# One entry per sensor. The key is the field name used in the posted reading.
+temperature_c = true
+humidity_pct = true
+
+# I2C address of the sensor bus, in hexadecimal. Only meaningful once a sensor is
+# chosen; the default is here so the key's shape is documented.
+i2c_address = "0x76"

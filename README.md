@@ -43,7 +43,7 @@ boundaries, is in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 | Path | Lane | State | What lives there |
 |---|---|---|---|
-| `firmware/` | Firmware | planned | CircuitPython for the sensor node; copied wholesale to the board's `CIRCUITPY` USB drive. |
+| [`firmware/`](firmware/) | Firmware | skeleton | CircuitPython for the sensor node; copied wholesale to the board's `CIRCUITPY` USB drive. Host tests only — not yet flashed. |
 | `data/` | Data | planned | Data policy and committed sample fixtures. `raw/` and `interim/` hold local-only data that is never committed. |
 | `notebooks/` | Data / analysis | planned | Analysis notebooks, with outputs stripped on commit. |
 | `webapp/` | Web | planned | The user-facing application. Framework not yet chosen. |

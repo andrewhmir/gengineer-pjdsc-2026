@@ -12,7 +12,11 @@ human-readable summary a judge or a returning teammate can read without walking 
 
 ### Added
 
-- Nothing yet. The next changes land here.
+- Firmware lane skeleton: `firmware/code.py` (the CircuitPython auto-run entry point) with
+  hardware access behind a guarded, injectable seam, plus the lane `README.md` covering
+  flashing, the pinned Adafruit bundle `20261010`, and the language subset. Templates
+  `firmware/secrets.example.py` and `firmware/config.example.toml` are placeholders only.
+  CI byte-compiles the lane; no board has been flashed yet.
 
 ### Changed
 
