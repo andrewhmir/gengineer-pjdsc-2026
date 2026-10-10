@@ -65,10 +65,17 @@ general good practice.
 
 ### 2.1 The repository is directly scored
 
-Final projects are judged on five criteria. The third is the code repository:
+Final projects are judged on **six** criteria in the Project-Based Elimination Round. The third is
+the code repository:
 
 > **Code Repository** — *Code Structure and Documentation; Functional Execution and
 > Reproducibility; Dependencies and Data Management*
+
+The full six are: Project Rationale and Design; Execution and Impact; Code Repository;
+Demonstration Video; Technical Rigor and Innovation; Sources. Note that the **Final Round** for
+the top ten finalists uses a *different* set of five criteria (Demonstrated Functionality and
+Technical Robustness; Impact and Real-World Applicability; User Experience and Design;
+Presentation and Communication; Sources) — do not conflate the two lists.
 
 The repository is also a mandatory deliverable: every final proposal must include "an
 updated slide deck (PDF), a recorded project demonstration video, and **a link to the

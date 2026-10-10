@@ -49,18 +49,24 @@ lane and should be reviewable in a single pull request. The pull request must th
 ## Commits
 
 [Conventional Commits](https://www.conventionalcommits.org/), one logical change per
-commit, with a lane scope:
+commit. Use a **lane scope** when the change belongs to one lane, and an **unscoped** type
+for cross-cutting or root-level work that belongs to no single lane:
 
 ```text
 feat(firmware): add DHT22 temperature reader
 fix(data): correct region name normalisation
 docs(webapp): state that no framework has been chosen
-chore(ci): gate firmware lane on py_compile
+chore: bootstrap the root Python toolchain
+ci: add the workflow and status-check gate
 ```
 
 Useful types: `feat`, `fix`, `docs`, `test`, `chore`, `refactor`, `perf`, `build`, `ci`.
 Useful scopes: `firmware`, `data`, `notebooks`, `webapp`, `docs`, `tests`, `specs`,
 `submission`, `ci`.
+
+The unscoped form is not a lesser option — the bootstrap commits for this repository are
+unscoped `chore:`, `ci:`, and `test:` commits, because no single lane owns a root config
+file. Do not invent a scope to satisfy the format.
 
 **House rule: no AI attribution trailers.** No `Co-Authored-By`, no "Generated with"
 footer. Commits read as the human author's work. This is a deliberate choice for a judged

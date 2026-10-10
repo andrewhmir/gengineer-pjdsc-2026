@@ -1039,16 +1039,34 @@ Naming convention (`NN-topic.ipynb`), what belongs in a notebook versus a module
 Run: `uv run pytest tests/test_notebooks.py -v`
 Expected: PASS with zero failures.
 
-- [ ] **Step 6: Verify the notebook executes**
+- [ ] **Step 6: Verify the notebook executes and is strip-clean**
 
 Run: `uv run pytest --nbmake notebooks/_template.ipynb -v`
 Expected: PASS. This proves the template works before it is offered to the team as the starting point.
 
-Then verify output stripping actually happens:
+**Before asserting strip-cleanliness, normalise the file once.** `nbstripout` rewrites every cell
+`id` to that cell's index (`_utils.py`: `if 'id' in cell and not keep_id: cell['id'] = str(i)`), so a
+hand-authored notebook **fails `--verify` even with no outputs at all**. Verified empirically:
+
+| Template state | `nbstripout --verify` |
+|---|---|
+| hand-authored `"id": "probe-cell-1"` | exit 1 — "would have stripped" |
+| no `id` field | exit 1, plus a validation error |
+| `"id": "0"` (equal to the index) | exit 0 |
+| after one `nbstripout` write pass | exit 0 |
+
+So run the write pass once and commit the normalised result:
+
 ```bash
+uv run nbstripout notebooks/_template.ipynb
 uv run nbstripout --verify notebooks/_template.ipynb
 ```
-Expected: exit code 0.
+Expected: the write pass normalises cell ids; then `--verify` exits 0.
+
+Then record in `notebooks/README.md` that `--verify` reports **any** change the hook would make —
+not only stored output — and that a newly handwritten notebook therefore needs one
+`nbstripout` write pass before it passes. Without that note, the next author will read a `--verify`
+failure as "my outputs are still there" when the real cause is an unnormalised cell id.
 
 - [ ] **Step 7: Commit**
 
