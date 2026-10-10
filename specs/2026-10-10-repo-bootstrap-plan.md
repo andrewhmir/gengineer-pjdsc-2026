@@ -556,7 +556,9 @@ def test_agents_file_exists(repo_root: Path, name: str) -> None:
 @pytest.mark.parametrize("name", AGENTS_FILES)
 def test_agents_file_is_within_line_budget(repo_root: Path, name: str) -> None:
     lines = (repo_root / name).read_text(encoding="utf-8").splitlines()
-    assert len(lines) < MAX_AGENTS_LINES, f"{name} is {len(lines)} lines; keep it under {MAX_AGENTS_LINES}"
+    assert len(lines) < MAX_AGENTS_LINES, (
+        f"{name} is {len(lines)} lines; keep it under {MAX_AGENTS_LINES}"
+    )
 
 
 def test_claude_md_imports_agents_md(repo_root: Path) -> None:
@@ -706,7 +708,9 @@ def test_code_py_has_no_forbidden_constructs(repo_root: Path) -> None:
     """CircuitPython lacks dataclasses and match statements."""
     tree = ast.parse((repo_root / "firmware/code.py").read_text(encoding="utf-8"))
     for node in ast.walk(tree):
-        assert not isinstance(node, FIRMWARE_FORBIDDEN_NODES), "match is unavailable on CircuitPython"
+        assert not isinstance(node, FIRMWARE_FORBIDDEN_NODES), (
+            "match is unavailable on CircuitPython"
+        )
         if isinstance(node, ast.ImportFrom) and node.module in FIRMWARE_FORBIDDEN_CALLS:
             pytest.fail("dataclasses is unavailable on CircuitPython")
 
