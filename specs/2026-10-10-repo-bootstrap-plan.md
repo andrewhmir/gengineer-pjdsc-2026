@@ -138,7 +138,12 @@ description = "PJDSC 2026 entry: public health analytics with microcontroller an
 readme = "README.md"
 requires-python = ">=3.12"
 license = "Apache-2.0"
-dependencies = []
+dependencies = [
+    # The analysis lane. The notebook template and every analysis notebook read
+    # committed fixtures from data/samples/ with pandas, and CI runs the template
+    # through nbmake, so pandas is needed at run time — not only for tooling.
+    "pandas>=2.2",
+]
 
 [dependency-groups]
 dev = [
@@ -1050,7 +1055,7 @@ def test_template_notebook_uses_relative_sample_path(repo_root: Path) -> None:
     source = "\n".join(
         "".join(cell["source"]) for cell in notebook["cells"] if cell["cell_type"] == "code"
     )
-    assert "data/samples/public_health_indicators.csv" in source
+    assert "../data/samples/public_health_indicators.csv" in source
     assert "C:\\" not in source and "/Users/" not in source
 ```
 
@@ -1065,7 +1070,7 @@ A valid notebook JSON satisfying every assertion above. Required content:
 
 - `nbformat: 4`, `nbformat_minor: 5`, `metadata.tags: ["nbmake"]`.
 - A markdown cell stating the notebook's purpose and the rule that reusable logic does not live in cells.
-- A code cell reading `data/samples/public_health_indicators.csv` **by relative path** with `pandas.read_csv`.
+- A code cell reading `../data/samples/public_health_indicators.csv` — **relative to the notebook, not to the repository root** — with `pandas.read_csv`. Verified: nbmake executes a notebook with the notebook's own directory as the process CWD, so a repository-root-relative path resolves to `notebooks/data/samples/…` and raises `FileNotFoundError`. Task 9's CI runs `pytest --nbmake notebooks/`, so the notebook-relative form is the one that executes. It is still a relative path, so the no-absolute-paths rule holds.
 - A second code cell computing a simple groupby over `indicator` and `value`.
 - All code cells with `"outputs": []` and `"execution_count": null`.
 
