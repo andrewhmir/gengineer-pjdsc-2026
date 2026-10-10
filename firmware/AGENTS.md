@@ -72,8 +72,9 @@ uv run ruff format --check firmware/
 uv run ruff check firmware/
 ```
 
-The lane's own test module and its `README.md` — the flashing procedure, the pinned
-bundle version, and the `code.py`/stdlib-`code` name collision — arrive with the lane
-skeleton task, not with this file; until then `uv run pytest` is the whole gate.
-Deploying is a copy, not a build: `code.py`, `lib/`, and a real `secrets.py` are copied
-onto the board's `CIRCUITPY` drive.
+`tests/test_firmware.py` covers this lane, and `firmware/README.md` holds the flashing
+procedure, the pinned bundle version, and the `code.py`/stdlib-`code` name collision.
+`uv run pytest` is only this lane's automated check — the root four-command gate
+(format, lint, mypy, pytest) still applies to every change. Deploying is a copy, not a
+build: `code.py`, `lib/`, and a real `secrets.py` are copied onto the board's `CIRCUITPY`
+drive.

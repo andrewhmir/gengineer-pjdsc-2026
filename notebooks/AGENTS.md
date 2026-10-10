@@ -41,9 +41,10 @@ uv run nbstripout --verify notebooks/<name>.ipynb
 limited to stored output — the full semantics belong in the lane's `README.md`.
 
 The lane's own hygiene tests and its `README.md` arrive with the lane task, not with this
-file; until then `uv run pytest` is the whole gate. The suite does not execute notebooks —
-a notebook that is meant to run in CI is opted in explicitly, and the opt-in mechanism
-belongs in the lane's `README.md`.
+file; until then, `uv run pytest` is the only automated check for this lane — the root
+four-command gate still applies. The suite does not execute notebooks — a notebook that is
+meant to run in CI is opted in explicitly, and the opt-in mechanism belongs in the lane's
+`README.md`.
 
 ## Notes
 
