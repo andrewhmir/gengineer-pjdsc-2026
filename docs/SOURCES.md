@@ -161,9 +161,18 @@ project and must not be cited as if it were**):
 [Data set]. [Publisher/Repository]. https://doi.org/[doi]
 
 Licence: [licence, e.g. CC BY 4.0]. Committed: [no — retrieved by the procedure in
-docs/DATA.md | no — licence forbids redistribution | yes, as a subset in
-data/samples/<file>, because [reason]]. [One sentence on its use.]
+docs/DATA.md | no — licence forbids redistribution | yes — only for an openly licensed
+aggregate table containing no personal information, in data/samples/<file>, because
+[reason]]. [One sentence on its use.]
 ```
+
+**Never use the "Committed: yes" branch for record-level or personal data.** No real patient
+or personally identifiable health data may be committed to this repository under any
+licence — RA 10173 (Data Privacy Act of 2012). See
+[`DATA.md`](DATA.md#data-privacy-ra-10173-data-privacy-act-of-2012) and
+[`../data/samples/README.md`](../data/samples/README.md). A committed fixture is normally
+**synthetic**, in which case it is not cited here at all — it is declared in
+`data/samples/README.md`, because a fabricated file has no external source to cite.
 
 ### Template C — academic article describing or accompanying a dataset
 
