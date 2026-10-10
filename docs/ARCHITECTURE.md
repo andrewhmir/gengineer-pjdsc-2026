@@ -50,8 +50,11 @@ Consequences, all of which are enforced by tests in [`tests/`](../tests/):
   CircuitPython standard library and the Adafruit bundle. It may **never** import from the
   repository root — not `data`, not `webapp`, not `tests`. Such an import works on a
   laptop with the repository checked out and fails immediately on the board.
-- Anything genuinely shared between firmware files goes **into** `firmware/lib/`, because
-  that is the one directory the board and the repository both resolve.
+- A module shared between firmware files is a **first-party module sitting beside
+  `firmware/code.py`**, because the lane is flat and the board resolves its own directory.
+  It does **not** go into `firmware/lib/`: that directory holds vendored Adafruit-bundle
+  code and is never hand-edited (§2). Putting first-party code there would hide it from
+  review and from the tools that exclude `lib/`.
 - `firmware/code.py` is the auto-running entry point; the board executes it on boot.
 - Hardware access sits behind a seam so that host-side tests can inject fakes for `board`,
   `busio`, and `digitalio`, which do not exist off-device.
