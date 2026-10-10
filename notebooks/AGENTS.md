@@ -16,8 +16,8 @@ binding here and are not restated.
   machine's run. `nbstripout` enforces this on commit; keep every code cell's `outputs`
   empty and its `execution_count` null in the file you commit.
 - **No absolute paths.** `C:\…` and `/Users/…` break for every other clone and for the
-  judges. Read fixtures by repository-relative path, for example
-  `data/samples/<name>.csv`.
+  judges. Read fixtures by a path relative to **the notebook**, for example
+  `../data/samples/<name>.csv`.
 - **Never read from `data/raw/` in a committed notebook or a committed output.**
   `data/raw/` is gitignored, local-only data; a notebook that depends on it is not
   reproducible from a clean clone.
@@ -40,11 +40,11 @@ uv run nbstripout --verify notebooks/<name>.ipynb
 `--verify` exits non-zero for *any* change the commit-time hook would make, which is not
 limited to stored output — the full semantics belong in the lane's `README.md`.
 
-The lane's own hygiene tests and its `README.md` arrive with the lane task, not with this
-file; until then, `uv run pytest` is the only automated check for this lane — the root
-four-command gate still applies. The suite does not execute notebooks — a notebook that is
-meant to run in CI is opted in explicitly, and the opt-in mechanism belongs in the lane's
-`README.md`.
+The lane's hygiene tests live in [`../tests/test_notebooks.py`](../tests/test_notebooks.py); run
+them with `uv run pytest`. The suite does not execute notebooks. A notebook that is meant to run
+in CI is opted in explicitly by carrying the `nbmake` tag in its top-level metadata; that
+mechanism, and the working-directory rule that decides how a notebook writes its fixture paths,
+are in the lane's `README.md`.
 
 ## Notes
 

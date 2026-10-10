@@ -5,7 +5,16 @@ description = "PJDSC 2026 entry: public health analytics with microcontroller an
 readme = "README.md"
 requires-python = ">=3.12"
 license = "Apache-2.0"
-dependencies = []
+dependencies = [
+    # The analysis lane. The notebook template and every analysis notebook read
+    # committed fixtures from data/samples/ with pandas, and CI runs the template
+    # through nbmake, so pandas is needed at run time — not only for tooling.
+    # The upper bound is deliberate: 2.x and 3.x have been exercised, and a future
+    # major should be a decision made when the analysis lane is written, not a side
+    # effect of a lock refresh. It is a bound, not a pin, because no analysis code
+    # exists yet to justify freezing a minor version.
+    "pandas>=2.2,<4",
+]
 
 [dependency-groups]
 dev = [
