@@ -533,7 +533,7 @@ git commit -m "docs: add project documentation, governance, and citation files"
 
 **Interfaces:**
 - Consumes: the `repo_root` fixture from Task 1. References human docs created in Task 2 (`CONTRIBUTING.md`, `docs/DATA.md`) rather than restating them.
-- Produces: the lane rule files that Tasks 4, 8, and 9 extend. `webapp/AGENTS.md` is created here; Task 9 creates the sibling `webapp/README.md`.
+- Produces: the lane rule files that Tasks 4, 6, and 7 extend. `webapp/AGENTS.md` is created here; Task 7 creates the sibling `webapp/README.md`. Side effect worth knowing: creating these three lane files also brings `firmware/`, `notebooks/`, and `webapp/` into existence as directories, which is why the all-lanes-exist check can live in Task 12.
 
 - [ ] **Step 1: Write the failing test**
 
