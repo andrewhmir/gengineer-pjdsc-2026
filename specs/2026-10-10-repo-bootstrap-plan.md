@@ -1303,7 +1303,13 @@ Design decisions to implement:
 - `test` (guarded on `changes.outputs.python == 'true'`) runs `uv sync --locked` and `uv run pytest --cov -q`.
 - `notebooks` (guarded on `changes.outputs.notebooks == 'true'`) runs `uv sync --locked` and `uv run pytest --nbmake notebooks/ -q`.
 - `firmware` (guarded on `changes.outputs.firmware == 'true'`) runs `python -m py_compile` over every `.py` file under `firmware/` except `firmware/lib/`, using `find ... -not -path '*/lib/*' -print0 | xargs -0 python -m py_compile`. Comment in the job that this proves byte-compilation only and cannot prove on-device behaviour.
-- `secrets` (always) uses `gitleaks/gitleaks-action@v2` with `GITHUB_TOKEN` supplied, full history (`fetch-depth: 0`).
+- `secrets` (always) scans full history with the **free gitleaks CLI**, not the
+  `gitleaks/gitleaks-action` action. The action's v2 release is license-gated and requires a
+  `GITLEAKS_LICENSE` secret for organization-owned repositories, which would make this job fail
+  for reasons unrelated to the code. Install the CLI on the runner and run the same command the
+  project documents locally. Checkout with `fetch-depth: 0`, then run
+  `gitleaks detect --config .gitleaks.toml --redact -v`. Adding the Go-dependent pre-commit hook
+  is likewise forbidden (see Task 1).
 - `ci-success` (always) has `needs: [changes, lint, test, notebooks, firmware, secrets]` and `if: always()`. It must fail when any needed job failed or was cancelled, and **succeed when jobs were skipped**. Guard against the cascade rule: a job skipped because its `needs` failed must not by itself count as a failure. Implement with a single step whose shell logic is:
 
 ```bash
