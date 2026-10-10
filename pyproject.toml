@@ -42,8 +42,9 @@ testpaths = ["tests"]
 pythonpath = ["."]
 addopts = "-ra --strict-markers"
 
-[tool.coverage.run]
-source = ["tests"]
+# Deliberately no [tool.coverage] section and no --cov in CI. This repository ships
+# no importable package (spec §4.1 rule 2), so the only thing coverage could measure
+# is the test suite itself, which reports a number that means nothing.
 
 # This repository ships no importable package (spec §4.1 rule 2), so uv must not
 # try to build or install the project itself. Without this, `uv sync` builds the
