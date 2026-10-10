@@ -351,7 +351,7 @@ Run:
 uv sync
 uv run pytest tests/test_repo_smoke.py -v
 ```
-Expected: PASS, 9 tests collected (6 parametrized file checks + 2 parametrized dir checks + 1 trailing-comment check + 2 version checks — the exact count is whatever `pytest` reports; the requirement is zero failures).
+Expected: PASS, with zero failures. The exact collected count is whatever `pytest` reports; the requirement is zero failures and no errors.
 
 Then confirm formatting and lint are clean:
 ```bash
@@ -673,7 +673,6 @@ lane — the three ways a CircuitPython program fails at boot.
 
 import ast
 import py_compile
-import sys
 from pathlib import Path
 
 import pytest
@@ -729,12 +728,14 @@ def test_firmware_does_not_import_repo_root(repo_root: Path) -> None:
 
 def test_code_py_imports_cleanly_off_device(repo_root: Path) -> None:
     """The hardware import is guarded, so the module is importable on a laptop."""
-    sys.path.insert(0, str(repo_root / "firmware"))
-    try:
-        import code as firmware_code  # noqa: A004
-    finally:
-        sys.path.remove(str(repo_root / "firmware"))
-        sys.modules.pop("code", None)
+    from importlib.util import module_from_spec, spec_from_file_location
+
+    spec = spec_from_file_location(
+        "firmware_code", repo_root / "firmware" / "code.py"
+    )
+    assert spec is not None and spec.loader is not None
+    firmware_code = module_from_spec(spec)
+    spec.loader.exec_module(firmware_code)
     assert firmware_code.HARDWARE_AVAILABLE is False
     assert isinstance(firmware_code.run_check(), str)
 
@@ -762,7 +763,13 @@ except ImportError:
 
 `run_check()` returns a human-readable status string; it must not require hardware.
 
-**Known limitation, documented rather than hidden:** the filename `code.py` shadows CPython's stdlib `code` module while `firmware/` is on `sys.path`. The host-side test therefore imports it inside a `try`/`finally` that removes both the path entry and `sys.modules["code"]`. Do not "fix" this by renaming the file — `code.py` is the CircuitPython auto-run entry point name and is required. Add a comment in `firmware/README.md` noting the shadowing.
+**Known limitation, documented rather than hidden:** the filename `code.py` collides with
+CPython's stdlib `code` module. The host-side test must therefore **not** put `firmware/` on
+`sys.path`; it loads the file by path with `importlib.util.spec_from_file_location` under the
+isolated module name `firmware_code`, which avoids shadowing `code` for anything else
+imported during the session. Do not "fix" this by renaming the file — `code.py` is the
+CircuitPython auto-run entry point name and is required. Add a comment in `firmware/README.md`
+noting the collision.
 
 - [ ] **Step 4: Create `firmware/README.md`, `firmware/lib/README.md`, `firmware/config.example.toml`, `firmware/.gitignore`**
 
