@@ -37,7 +37,7 @@ Copied verbatim from the spec. Every task implicitly includes these.
 
 The spec implies these conditions but no task's own tests fully exercise them. Each is the failure most likely to bite a real user, and each gets pinned by a test in the task that owns the code.
 
-1. **A Windows contributor's CRLF line endings silently break a shell script or `uv.lock`.** A reasonable person expects a clone on Windows and a clone on macOS to behave identically. → pinned in Task 1 (`test_no_crlf_in_lockfile`) and Task 4 (`test_firmware_sources_compile` reads bytes, not text).
+1. **A Windows contributor's CRLF line endings silently break a shell script or `uv.lock`.** A reasonable person expects a clone on Windows and a clone on macOS to behave identically. → pinned in Task 9 (`test_gitattributes_forces_lf_for_lockfile_and_python`); Task 1's own suite deliberately does not assert it.
 2. **A notebook is committed with outputs, bloating the repository and leaking data.** A reasonable person expects `data/raw/` contents never to appear in a commit. → pinned in Task 8 (`test_template_notebook_has_no_outputs`).
 3. **Firmware imports a host-only or root-level module and compiles fine but crashes on the board at boot.** A meaningful failure because CI cannot catch it on hardware. → pinned in Task 4 (`test_firmware_does_not_import_repo_root`, `test_code_py_has_no_forbidden_constructs`).
 4. **A teammate pastes WiFi credentials into `firmware/secrets.py` and it gets committed.** The single most common CircuitPython leak. → pinned in Task 5 (`test_secrets_py_is_ignored`, `test_secrets_example_is_committed`).
@@ -175,9 +175,6 @@ testpaths = ["tests"]
 pythonpath = ["."]
 addopts = "-ra --strict-markers"
 
-[tool.coverage.run]
-source = ["tests"]
-
 # This repository ships no importable package (spec §4.1 rule 2), so uv must not
 # try to build or install the project itself. Without this, `uv sync` builds the
 # root project and fails on `readme = "README.md"` until Task 2 creates that file.
@@ -251,6 +248,7 @@ Thumbs.db
 *.swp
 
 # --- Agent working artifacts ---
+.worktrees/
 .superpowers/
 .agents/
 ```
@@ -307,7 +305,8 @@ repos:
 # `language: golang` and requires a Go toolchain, which this project does not
 # depend on; adding it would make `pre-commit run --all-files` unrunnable on a
 # machine without Go. Secret scanning is enforced in CI by the `secrets` job,
-# which uses the prebuilt gitleaks action. See docs/SECURITY.md.
+# which installs and runs the gitleaks CLI against .gitleaks.toml.
+# See SECURITY.md at the repository root.
 ```
 
 `tests/conftest.py` — exact content. This fixture is the interface every later task uses.
@@ -402,6 +401,7 @@ git commit -m "chore: bootstrap root Python toolchain, ignore rules, and smoke t
 - Create: `CHANGELOG.md`
 - Create: `LICENSE`
 - Create: `CITATION.cff`
+- Create: `.env.example`
 - Create: `docs/README.md`
 - Create: `docs/ARCHITECTURE.md`
 - Create: `docs/DATA.md`
@@ -431,6 +431,7 @@ REQUIRED_DOCS = (
     "CHANGELOG.md",
     "LICENSE",
     "CITATION.cff",
+    ".env.example",
     "docs/README.md",
     "docs/ARCHITECTURE.md",
     "docs/DATA.md",
@@ -488,6 +489,7 @@ Keep every documented command literally runnable — do not document a command t
 - `CHANGELOG.md` — Keep a Changelog structure with an `Unreleased` section and the `0.1.0` bootstrap entry.
 - `LICENSE` — full Apache License 2.0 text (spec §11 leaves this confirmable; Apache-2.0 is the proposed default because the web app may be deployed publicly).
 - `CITATION.cff` — `cff-version: 1.2.0`, message, `title`, `type: software`, `license: Apache-2.0`, and an `authors` list containing `@andrewhmir`. The event publishes qualifying repositories with citation to each contributing member, so every teammate is added here.
+- `.env.example` — the committed template for `.env`, mirroring the `secrets.example.py` pattern: placeholder keys only, no real values, with a comment that `.env` itself is gitignored. This file exists so `.gitleaks.toml`'s `.env.example` allowlist entry guards a real file rather than being dead configuration.
 - `docs/README.md` — index of the `docs/` set and of `specs/`.
 - `docs/ARCHITECTURE.md` — the three-lane model, the rule that `firmware/` is copied to the `CIRCUITPY` drive and never imports from the repository root, the `firmware/lib/` vendoring rule, and the list of official competition topics so future work is framed against them.
 - `docs/DATA.md` — what may and may not be committed; `data/raw/` and `data/interim/` are never committed; `data/samples/` holds small fixtures and is committed so tests and judges can run without the full dataset; retrieval procedure for full datasets; and the **RA 10173 / Data Privacy Act of 2012** rule that no real patient or personally identifiable health data may ever be committed.
@@ -513,7 +515,7 @@ Expected: no findings.
 
 ```bash
 git add README.md CONTRIBUTING.md SECURITY.md CHANGELOG.md LICENSE \
-        CITATION.cff docs/ tests/test_docs.py
+        CITATION.cff .env.example docs/ tests/test_docs.py
 git commit -m "docs: add project documentation, governance, and citation files"
 ```
 
@@ -1307,7 +1309,7 @@ Design decisions to implement:
 - Trigger on `push` to `main` and on `pull_request`. Set `permissions: contents: read` at the top level.
 - `changes` uses `actions/checkout@v4` with `fetch-depth: 0`, then computes changed files with `git diff --name-only "${{ github.event.pull_request.base.sha }}...${{ github.sha }}"` for pull requests and `HEAD~1 HEAD` for pushes, writing them to a file. It sets outputs `python`, `notebooks`, and `firmware` (each `'true'` or `'false'`) by matching path prefixes, using `github.event.pull_request.base.sha` only when it is non-empty.
 - `lint` (guarded on `changes.outputs.python == 'true'`) uses `astral-sh/setup-uv@v5` with `enable-cache: true`, then `uv sync --locked`, then `uv run ruff format --check .`, `uv run ruff check .`, `uv run mypy`.
-- `test` (guarded on `changes.outputs.python == 'true'`) runs `uv sync --locked` and `uv run pytest --cov -q`.
+- `test` (guarded on `changes.outputs.python == 'true'`) runs `uv sync --locked` and `uv run pytest -q`.
 - `notebooks` (guarded on `changes.outputs.notebooks == 'true'`) runs `uv sync --locked` and `uv run pytest --nbmake notebooks/ -q`.
 - `firmware` (guarded on `changes.outputs.firmware == 'true'`) runs `python -m py_compile` over every `.py` file under `firmware/` except `firmware/lib/`, using `find ... -not -path '*/lib/*' -print0 | xargs -0 python -m py_compile`. Comment in the job that this proves byte-compilation only and cannot prove on-device behaviour.
 - `secrets` (always) scans full history with the **free gitleaks CLI**, not the
