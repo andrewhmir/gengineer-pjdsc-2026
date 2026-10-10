@@ -33,13 +33,17 @@ binding here and are not restated.
 ## Commands
 
 ```console
-uv run pytest tests/test_notebooks.py -v
+uv run pytest
 uv run nbstripout --verify notebooks/<name>.ipynb
 ```
 
-The notebook-hygiene tests assert the output-stripping and relative-path rules above.
-They do not execute notebooks; a notebook that is meant to run in CI is opted in
-explicitly, and the opt-in mechanism is documented in the lane's `README.md`.
+`--verify` exits non-zero for *any* change the commit-time hook would make, which is not
+limited to stored output — the full semantics belong in the lane's `README.md`.
+
+The lane's own hygiene tests and its `README.md` arrive with the lane task, not with this
+file; until then `uv run pytest` is the whole gate. The suite does not execute notebooks —
+a notebook that is meant to run in CI is opted in explicitly, and the opt-in mechanism
+belongs in the lane's `README.md`.
 
 ## Notes
 

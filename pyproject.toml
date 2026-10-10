@@ -18,6 +18,11 @@ dev = [
     "pytest>=8.3",
     "pytest-cov>=5.0",
     "nbmake>=1.5",
+    # Present so the documentable command `uv run nbstripout --verify <notebook>` works.
+    # The pre-commit hook is the primary enforcement, but it cannot run on the maintainer's
+    # machine (see the root AGENTS.md), so the CLI is the fallback an agent or human can
+    # actually execute. Keeping the command runnable is worth one dev dependency.
+    "nbstripout>=0.8",
     "pre-commit>=3.8",
 ]
 

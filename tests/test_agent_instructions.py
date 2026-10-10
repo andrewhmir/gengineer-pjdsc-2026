@@ -37,21 +37,31 @@ def test_claude_md_imports_agents_md(repo_root: Path) -> None:
     assert "@AGENTS.md" in content
 
 
-def test_root_agents_states_hard_prohibitions(repo_root: Path) -> None:
+def test_root_agents_states_every_hard_prohibition(repo_root: Path) -> None:
+    """One assertion per prohibition, so deleting any single rule turns this red.
+
+    An either/or phrase check would stay green if the secrets or RA 10173 rules
+    were removed, which is the defect this test exists to prevent.
+    """
     content = (repo_root / "AGENTS.md").read_text(encoding="utf-8").lower()
-    assert "no direct commits to main" in content or "never commit directly to `main`" in content
+    assert "never commit directly to `main`" in content
     assert "data/raw" in content
+    assert "data/interim" in content
+    assert "firmware/secrets.py" in content
+    assert ".env" in content
+    assert "10173" in content
+    assert "firmware/lib/" in content
 
 
 def test_firmware_agents_protects_vendored_code(repo_root: Path) -> None:
-    """REQ-053."""
+    """REQ-053. The vendored-read-only rule and the language subset are both needed."""
     content = (repo_root / "firmware/AGENTS.md").read_text(encoding="utf-8").lower()
-    assert "lib/" in content
-    assert "never" in content or "do not" in content
-    assert "dataclass" in content or "circuitpython" in content
+    assert "never edit" in content and "lib/" in content
+    assert "dataclasses" in content
+    assert "match" in content
 
 
 def test_webapp_agents_withholds_framework_decision(repo_root: Path) -> None:
     """An agent must not invent a framework that has not been chosen."""
     content = (repo_root / "webapp/AGENTS.md").read_text(encoding="utf-8").lower()
-    assert "not been" in content or "no framework" in content or "undecided" in content
+    assert "no framework has been chosen" in content

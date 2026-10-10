@@ -21,9 +21,12 @@ onto a USB mass-storage drive. That one fact drives every rule below.
   does not travel with it, so such an import works on a laptop and fails at boot — the
   worst possible failure mode, because it looks correct in review.
 - **Keep the lane flat and dependency-free.** There is no packaging step and no
-  installer. Anything genuinely shared between firmware modules goes **into
-  `firmware/lib/`**, because that is the one directory the board and the repository both
-  resolve.
+  installer. The lane is deployed by copying it onto the board, so a new first-party
+  module is simply a **sibling of `code.py` at the firmware root** — that is what the
+  board resolves, and it stays in the repository and in review scope.
+- **Do not put first-party code in `firmware/lib/`.** `lib/` holds vendored Adafruit
+  bundle code and nothing else, which is exactly why the read-only rule above exists. The
+  read-only rule and this placement rule are one rule, not two.
 - **Do not rename or replace `code.py`.** It is the CircuitPython auto-running entry
   point; the board executes it on boot. There is exactly one.
 
@@ -51,22 +54,26 @@ meaningful so a test can assert on it.
 
 ## Verify before you claim
 
-CI byte-compiles every `firmware/**/*.py` (excluding `lib/`), checks that no firmware
-source imports a host-only root module, and checks that `code.py` avoids the forbidden
-constructs above. That is the whole of what CI proves.
+The CI workflow — not yet created by this bootstrap — is specified to byte-compile every
+`firmware/**/*.py` (excluding `lib/`), to check that no firmware source imports a host-only
+root module, and to check that `code.py` avoids the forbidden constructs above. Until it
+exists, nothing validates this lane automatically.
 
-**CI cannot prove the code runs on the board.** `py_compile` accepts code that still
-crashes at boot. A human must flash the board and watch it run before a firmware change
-is described as working. Say "byte-compiles" when that is all that is known.
+**No check can prove the code runs on the board.** `py_compile` accepts code that still
+crashes at boot, which is why the checks above are necessary but not sufficient. A human
+must flash the board and watch it run before a firmware change is described as working.
+Say "byte-compiles" when that is all that is known.
 
 ## Commands
 
 ```console
-uv run pytest tests/test_firmware.py -v
+uv run pytest
 uv run ruff format --check firmware/
 uv run ruff check firmware/
 ```
 
+The lane's own test module and its `README.md` — the flashing procedure, the pinned
+bundle version, and the `code.py`/stdlib-`code` name collision — arrive with the lane
+skeleton task, not with this file; until then `uv run pytest` is the whole gate.
 Deploying is a copy, not a build: `code.py`, `lib/`, and a real `secrets.py` are copied
-onto the board's `CIRCUITPY` drive. The flashing procedure, the pinned bundle version,
-and the `code.py`/stdlib-`code` name collision are documented in the lane's `README.md`.
+onto the board's `CIRCUITPY` drive.

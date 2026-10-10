@@ -83,8 +83,10 @@ runner beyond `uv` itself.
 - **Never edit anything under `firmware/lib/`.** It is vendored third-party code.
 - **No AI attribution trailers**: no `Co-Authored-By`, no "Generated with" footer.
   Commits read as the human author's work.
-- **Conventional Commits with a lane scope**, for example `fix(data): correct region
-  normalisation`.
+- **Conventional Commits.** Use a lane scope when the change belongs to one lane
+  (`feat(firmware): …`, `feat(data): …`); use an unscoped type for cross-cutting or
+  root-level work that belongs to no single lane (`chore:`, `ci:`, `test:`, `docs:`).
+  Details: [`CONTRIBUTING.md`](CONTRIBUTING.md).
 - **English only** — code, comments, notebook prose, commit messages, and issues.
 - Do not commit `.superpowers/` or `.worktrees/`; they are agent working artifacts.
 - Do not edit `specs/`. Those are frozen, controller-owned design records.
