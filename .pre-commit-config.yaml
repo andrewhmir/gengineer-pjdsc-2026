@@ -1,0 +1,33 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+        exclude: ^firmware/lib/
+      - id: check-yaml
+      - id: check-toml
+      - id: check-json
+        exclude: ^notebooks/
+      - id: check-added-large-files
+        args: ["--maxkb=1024"]
+      - id: check-merge-conflict
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    # This rev MUST equal the pinned ruff version in pyproject.toml's dev group.
+    rev: v0.17.0
+    hooks:
+      - id: ruff
+        args: ["--fix"]
+      - id: ruff-format
+
+  - repo: https://github.com/kynan/nbstripout
+    rev: 0.7.1
+    hooks:
+      - id: nbstripout
+
+# Deliberately no gitleaks hook here. The upstream gitleaks hook uses
+# `language: golang` and requires a Go toolchain, which this project does not
+# depend on; adding it would make `pre-commit run --all-files` unrunnable on a
+# machine without Go. Secret scanning is enforced in CI by the `secrets` job,
+# which uses the prebuilt gitleaks action. See docs/SECURITY.md.

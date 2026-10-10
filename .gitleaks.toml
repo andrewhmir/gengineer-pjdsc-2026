@@ -1,0 +1,12 @@
+title = "gengineer-pjdsc-2026 gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Committed example files contain placeholders, never real credentials."
+paths = [
+    '''secrets\.example\.py''',
+    '''\.env\.example''',
+    '''docs/SETUP\.md''',
+]

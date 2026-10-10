@@ -1,4 +1,42 @@
-# --- Tool worktrees and agent scratch (kept out of the repository) ---
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+
+# --- Tooling caches ---
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# --- Secrets: never commit ---
+.env
+.env.local
+firmware/secrets.py
+*.pem
+*.key
+
+# --- Data: structure is committed, contents are not ---
+data/raw/*
+!data/raw/README.md
+data/interim/*
+!data/interim/README.md
+
+# --- Notebook checkpoints ---
+.ipynb_checkpoints/
+
+# --- OS and editor ---
+.DS_Store
+Thumbs.db
+*.swp
+
+# --- Agent working artifacts ---
 .worktrees/
 .superpowers/
 .agents/
