@@ -9,6 +9,9 @@ Scope: everything under `tests/`. The closest `AGENTS.md` wins; see the root
 - **Never touch the real dataset.** Use fixtures from `data/samples/`.
 - **Mock the board.** `board`, `busio`, and `digitalio` do not exist off-device;
   tests must inject fakes rather than importing them.
+- **Fake the firmware seam, do not import it.** The hardware seam lives in `firmware/`
+  precisely so these tests can inject fakes; the lane rules are in
+  [`../firmware/AGENTS.md`](../firmware/AGENTS.md).
 - Tests must pass with `uv run pytest` from a clean clone, with no manual setup.
 
 ## Commands
