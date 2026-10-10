@@ -278,7 +278,7 @@ commands, hard rules, and gotchas, and they deliberately do **not** duplicate `R
 | Lint and format | `ruff` (both lint and formatter), line length 100 | One tool instead of black + isort + flake8; rule sets `E,F,W,I,UP,B,SIM` |
 | Types | `mypy`, non-strict initially | Strict mode on an empty repository is friction; tighten as real code lands |
 | Tests | `pytest` + `pytest-cov`, `nbmake` for notebooks | `nbmake` executes notebooks in CI |
-| Pre-commit | `.pre-commit-config.yaml` | Whitespace/EOF, YAML/TOML/JSON validity, ruff, `nbstripout`, gitleaks |
+| Pre-commit | `.pre-commit-config.yaml` | Whitespace/EOF, YAML/TOML/JSON validity, ruff, `nbstripout`. Deliberately **no** gitleaks hook: the upstream hook uses `language: golang` and would make `pre-commit run --all-files` unrunnable without a Go toolchain. |
 
 ### 6.2 Firmware testing — honest scope
 
@@ -298,10 +298,10 @@ unimplemented lane never fails a pull request.
 |---|---|---|
 | `changes` | always | Computes changed paths; other jobs gate on it |
 | `lint` | root Python changed | `ruff check`, `ruff format --check`, `mypy` |
-| `test` | root or `tests/` changed | `pytest --cov` |
+| `test` | root or `tests/` changed | `pytest -q` |
 | `notebooks` | `notebooks/` changed | `nbmake` executes opted-in notebooks |
 | `firmware` | `firmware/` changed | `py_compile` all firmware Python |
-| `secrets` | always | gitleaks, as a backstop to the pre-commit hook |
+| `secrets` | always | Enforcement point for secret scanning: installs and runs the gitleaks CLI (`gitleaks detect --config .gitleaks.toml --redact -v`) over full history. Not a backstop — there is deliberately no pre-commit hook, because that hook needs a Go toolchain. The free CLI is used rather than `gitleaks/gitleaks-action@v2`, which is license-gated. |
 | `ci-success` | always | Aggregate gate reporting **success** when upstream jobs were skipped |
 
 The `ci-success` job is load-bearing, not decorative: a required status check whose job is
@@ -390,7 +390,9 @@ Labels: `lane:firmware`, `lane:data`, `lane:notebooks`, `lane:webapp`, `lane:doc
 - `firmware/secrets.py` is gitignored; `firmware/secrets.example.py` is committed. WiFi
   credentials pasted into firmware are the single most common CircuitPython leak.
 - `.env` gitignored; `.env.example` committed.
-- gitleaks runs in pre-commit **and** in CI.
+- gitleaks runs in CI only, as the `secrets` job. There is no pre-commit gitleaks hook, because
+  the upstream hook requires a Go toolchain and would break `pre-commit run --all-files` for any
+  contributor without Go.
 - **No real patient or personally identifiable health data may be committed.** Public health
   data in the Philippines falls under the Data Privacy Act of 2012 (RA 10173). This is
   recorded in `docs/DATA.md` and `SECURITY.md`.

@@ -613,7 +613,7 @@ Root `AGENTS.md` sections, under 200 lines, operational rather than narrative:
 3. Commands: `uv sync`, `uv run pytest`, `uv run ruff check .`, `uv run ruff format .`, `uv run mypy`, `pre-commit run --all-files`.
 4. Hard rules: never commit directly to `main`; never commit anything under `data/raw/` or `data/interim/`; never commit `firmware/secrets.py` or `.env`; never commit real patient data; never edit `firmware/lib/`; no AI attribution trailers; Conventional Commits with lane scope.
 5. Where to look instead of duplicating: `CONTRIBUTING.md` for the contribution flow, `docs/DATA.md` for the data policy, `docs/SOURCES.md` for citations, `docs/ARCHITECTURE.md` for lane boundaries.
-6. Known environment constraints: `gh auth switch` writes outside the workspace and fails in a confined sandbox (spec §10.1); only PowerShell 5.1 is available on the maintainer's machine; `git` has `core.autocrlf=true`.
+6. Known environment constraints, stated so a future agent does not misdiagnose them as repository faults: (a) `gh auth switch` writes to `%APPDATA%\GitHub CLI\hosts.yml`, outside the workspace, and fails in a confined sandbox; (b) `pre-commit run --all-files` **cannot create its hook environments on this machine** — `virtualenv` fails on an out-of-repo cache with `WinError 5` — so `.pre-commit-config.yaml` is correct and must not be "fixed"; run `uv run ruff format --check .`, `uv run ruff check .`, and `uv run mypy` directly as the equivalent gates; (c) bare `python` on PATH is 3.10.11 while `uv run` resolves 3.12.0 via `.python-version`, so every test and tool command must go through `uv run`; (d) `git` on the maintainer's machine has `core.autocrlf=true`, and `.gitattributes` (Task 9) is what pins LF in the index.
 
 `CLAUDE.md` — exact content:
 
@@ -664,6 +664,7 @@ git commit -m "docs: add nested agent instruction layer"
 - Create: `firmware/README.md`
 - Create: `firmware/code.py`
 - Create: `firmware/lib/README.md`
+- Create: `firmware/secrets.example.py`
 - Create: `firmware/config.example.toml`
 - Create: `firmware/.gitignore`
 - Modify: `tests/AGENTS.md` (only if the firmware fake-injection note is missing)
@@ -787,10 +788,11 @@ imported during the session. Do not "fix" this by renaming the file — `code.py
 CircuitPython auto-run entry point name and is required. Add a comment in `firmware/README.md`
 noting the collision.
 
-- [ ] **Step 4: Create `firmware/README.md`, `firmware/lib/README.md`, `firmware/config.example.toml`, `firmware/.gitignore`**
+- [ ] **Step 4: Create `firmware/README.md`, `firmware/lib/README.md`, `firmware/secrets.example.py`, `firmware/config.example.toml`, `firmware/.gitignore`**
 
 - `firmware/README.md` — board flashing procedure (copy `code.py`, `lib/`, and a real `secrets.py` to the `CIRCUITPY` drive); the Adafruit CircuitPython bundle version used, pinned explicitly, with the refresh procedure for `lib/`; the CircuitPython language subset; how to run the host-side tests; and an explicit statement that **CI verifies byte-compilation only and cannot verify on-device behaviour**.
 - `firmware/lib/README.md` — what belongs here, that these files are vendored from the Adafruit bundle at the pinned version, and that they are never hand-edited.
+- `firmware/secrets.example.py` — the committed template that `firmware/secrets.py` is copied from, mirroring the Adafruit convention. **Placeholder values only**; it must contain no real credential. Document the keys CircuitPython code reads (WiFi SSID and password, and any API token), each set to an obvious placeholder such as `"YOUR_WIFI_SSID"`. Add a comment stating that `secrets.py` is gitignored and must never be committed. This file is asserted by `tests/test_firmware.py` and allowlisted in `.gitleaks.toml`, so it must exist even before any sensor code does.
 - `firmware/config.example.toml` — board-agnostic placeholder keys (`[device]`, `name`, `sample_interval_s`, `[sensors]`), with a comment that CircuitPython cannot parse TOML with the standard library and that the file documents configuration rather than being read by the firmware. This avoids implying a parser that does not exist.
 - `firmware/.gitignore` — exact content:
   ```gitignore
@@ -1108,7 +1110,7 @@ Create `tests/test_quickstart.py`:
 import re
 from pathlib import Path
 
-FENCED_COMMAND = re.compile(r"^uv (sync|run [a-z-]+.*)$", re.MULTILINE)
+FENCED_COMMAND = re.compile(r"^uv (sync|run [a-z-]+)", re.MULTILINE)
 
 
 def test_readme_documents_only_uv_commands(repo_root: Path) -> None:
@@ -1116,12 +1118,14 @@ def test_readme_documents_only_uv_commands(repo_root: Path) -> None:
     assert "uv sync" in readme
 
 
-def test_readme_lane_map_matches_the_filesystem(repo_root: Path) -> None:
-    """Every lane named in the README must exist, and no lane may be undocumented."""
+def test_readme_names_every_lane(repo_root: Path) -> None:
+    """The README must name all seven lanes. Its text is the assertion; the
+    directories themselves are asserted by an all-lanes-exist check at the end
+    of the plan, because firmware/ (Task 4), data/ (Task 5), notebooks/ (Task 6)
+    and webapp/ (Task 7) do not exist yet at this point in the plan."""
     readme = (repo_root / "README.md").read_text(encoding="utf-8")
     for lane in ("firmware/", "notebooks/", "webapp/", "data/", "docs/", "tests/", "specs/"):
         assert lane in readme, f"README does not mention the {lane} lane"
-        assert (repo_root / lane).is_dir(), f"README documents {lane}, which does not exist"
 
 
 def test_readme_documents_no_unrunnable_command(repo_root: Path) -> None:
@@ -1139,10 +1143,17 @@ def test_readme_documents_no_unrunnable_command(repo_root: Path) -> None:
         assert tool in pyproject, f"README documents `uv run {tool}` but it is not a dependency"
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [ ] **Step 2: Run the test to verify its state**
 
 Run: `uv run pytest tests/test_quickstart.py -v`
-Expected: FAIL — `README.md` does not yet name every lane or `pytest` is not yet documented in the form the test expects.
+Expected: this step has **no reachable red state**, and that is expected rather than a defect. Task 2
+already delivered a README that names all seven lanes and documents `uv sync` and
+`uv run pytest`, so the former "README does not yet name every lane" failure cannot occur. This
+task's genuine value is (a) the two fixed tests it adds — the bare-`uv run mypy` case and the
+`is_dir`/text split — and (b) the clean-clone verification in Step 5, which is what REQ-063
+actually asks for and which no unit test can substitute. Record the observed result honestly
+instead of manufacturing a failure; if a test does fail here, it is a real finding about the
+README.
 
 - [ ] **Step 3: Update `README.md` so the lane map and commands are complete and accurate**
 
@@ -1604,7 +1615,8 @@ def test_repository_root_files_are_present(repo_root: Path) -> None:
         "CLAUDE.md",
         "pyproject.toml",
         "uv.lock",
-    )    missing = [name for name in required if not (repo_root / name).is_file()]
+    )
+    missing = [name for name in required if not (repo_root / name).is_file()]
     assert not missing, f"missing root files: {missing}"
 
 
@@ -1624,6 +1636,14 @@ def test_ci_status_check_name_matches_the_ruleset(repo_root: Path) -> None:
     setup = (repo_root / "docs/SETUP.md").read_text(encoding="utf-8")
     assert "ci-success" in workflow["jobs"]
     assert "ci-success" in setup, "SETUP.md must name the required status check"
+
+
+def test_every_lane_exists(repo_root: Path) -> None:
+    """Whole-repository check: by the end of the plan every advertised lane is real.
+    Task 8 deliberately asserts only the README text, because four of these lanes
+    do not exist until Tasks 4-7."""
+    for lane in ("firmware", "notebooks", "webapp", "data", "docs", "specs", "tests"):
+        assert (repo_root / lane).is_dir(), f"lane {lane}/ is documented but absent"
 ```
 
 - [ ] **Step 2: Add `httpx` to the dev dependency group**
