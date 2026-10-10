@@ -34,7 +34,7 @@ def run_check() -> str:
     present, so it can be called on a laptop.
     """
     if HARDWARE_AVAILABLE:
-        return "firmware: hardware detected, sensor bus ready"
+        return "firmware: hardware modules available, no sensor code yet"
 
     return "firmware: no hardware detected, running in host-check mode"
 

@@ -24,14 +24,15 @@ capability into it than that: it has been byte-compiled in CI and flashed by nob
 ## Deploy: copying onto the board
 
 CircuitPython boards expose their flash as a USB mass-storage drive named `CIRCUITPY`. The
-board runs `code.py` from the root of that drive every time it boots or resets.
+board runs `code.py` from the root of that drive every time it boots or resets, and the lane
+is laid out flat so that the drive resolves it exactly as the repository does.
 
 1. Connect the board. A drive named `CIRCUITPY` appears.
 2. Copy the three things the board needs — `code.py`, `lib/`, and the real `secrets.py`
-   from step 3 — onto the drive, preserving layout. **Copy those files by name; do not
-   copy the lane directory wholesale**, because that would carry across `secrets.example.py`,
-   run the risk of copying a `__pycache__/` left behind by the host-side checks, and put
-   files on the board that the board never reads.
+   from step 3 — onto the drive, preserving layout. Nothing else in this directory has to
+   travel: the board never reads `secrets.example.py` or `config.example.toml`, and the
+   host-side checks leave a `__pycache__/` behind that would otherwise ride along onto the
+   drive.
 
    ```console
    cp firmware/code.py /path/to/CIRCUITPY/code.py
@@ -112,12 +113,14 @@ dated release so that the board and the repository hold the same code:
 |---|---|
 | Bundle release | `20261010` — [adafruit/Adafruit_CircuitPython_Bundle `20261010`](https://github.com/adafruit/Adafruit_CircuitPython_Bundle/releases/tag/20261010) |
 | Download | `adafruit-circuitpython-bundle-10.x-mpy-20261010.zip` |
-| Variant | `10.x`, matched to the CircuitPython major version on the board |
+| Variant | `10.x` — the documented default; see below |
 
-The `10.x` bundle is the one that matches a CircuitPython 10 board. **If the board runs a
-different CircuitPython major version, download that major version's asset from the same
-release page** — a mismatched bundle fails at import time and looks like a code bug. The
-same pin is recorded as `CIRCUITPY_BUNDLE_VERSION` in [`../.env.example`](../.env.example).
+The pin uses the `10.x` bundle, which is the documented default because the board has not
+been chosen yet and no CircuitPython major version is recorded in this repository. **If the
+team's board runs a different CircuitPython major version, download that major version's
+asset from the same release page** — a mismatched bundle fails at import time and looks like
+a code bug. The same pin is recorded as `CIRCUITPY_BUNDLE_VERSION` in
+[`../.env.example`](../.env.example), so all three carriers move together.
 
 ### Refreshing `lib/`
 

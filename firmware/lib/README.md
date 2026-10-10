@@ -24,7 +24,7 @@ Bundle; none of it is ours.
 |---|---|
 | Bundle release | `20261010` — [release page](https://github.com/adafruit/Adafruit_CircuitPython_Bundle/releases/tag/20261010) |
 | Asset | `adafruit-circuitpython-bundle-10.x-mpy-20261010.zip` |
-| Variant | `10.x`, matched to the CircuitPython major version on the board |
+| Variant | `10.x` — the documented default; see [`../README.md`](../README.md) |
 
 The flashing procedure, the refresh steps for this directory, and the language subset the
 lane is written against are in [`../README.md`](../README.md). Update this table, the one
