@@ -688,7 +688,7 @@ git commit -m "docs: add nested agent instruction layer"
 
 **Interfaces:**
 - Consumes: `repo_root` from Task 1; rules from `firmware/AGENTS.md` written in Task 3.
-- Produces: `firmware/code.py` exposing `main()` (no arguments, returns `None`) and a module-level `HARDWARE_AVAILABLE: bool`. `run_check()` returns a `str` status line. Task 10's CI job byte-compiles every `firmware/**/*.py`.
+- Produces: `firmware/code.py` exposing `main()` (no arguments, returns `None`) and a module-level `HARDWARE_AVAILABLE: bool`. `run_check()` returns a `str` status line. Task 9's CI job byte-compiles every `firmware/**/*.py`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1219,7 +1219,7 @@ uv sync
 uv run pytest
 ```
 
-Do not add a badge until Task 10's workflow is running, and only then reference the workflow by name that actually exists.
+Do not add a badge until Task 9's workflow is running, and only then reference the workflow by name that actually exists.
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
