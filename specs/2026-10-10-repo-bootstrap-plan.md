@@ -1055,47 +1055,55 @@ def test_every_notebook_has_no_outputs(repo_root: Path) -> None:
             )
 
 
-def test_notebook_selection_is_path_based_not_tag_based(repo_root: Path) -> None:
+def test_notebook_selection_is_path_based_not_tag_based() -> None:
     """Guard the collection mechanism, replacing a test that pinned an inert field.
 
     An earlier version asserted that a top-level ``metadata.tags`` entry named ``nbmake``
-    selected the notebook for CI. It does not. nbmake's collection predicate is
-    ``nbmake_enabled and p.match("*ipynb") and "_build" not in p.parts`` — location is the
-    only opt-in, and a cell-level ``tags`` list is used solely for ``raises-exception`` and
+    selected the notebook for CI. It does not. nbmake selects by location, and a
+    cell-level ``tags`` list is used only for ``raises-exception`` and
     ``skip-execution``. Asserting the notebook tag would pin a field nothing consumes and
     would mislead a future author into thinking a notebook can opt out by dropping it.
 
-    The assertion is behaviour, not strings: a temp notebook tagged ``nbmake`` under a
-    directory excluded by nbmake's rule must NOT be collected, and the same file placed in
-    the lane MUST be. ``tmp_path`` is supplied by pytest, so nothing is written into the
-    repository.
+    This asserts nbmake's **own predicate**, so if nbmake changes the rule the test fails
+    and the lane docs must be revisited. Verified to hold for all three cases:
+    a notebook under an excluded directory is not collected, a notebook in the lane is,
+    and nothing is collected without ``--nbmake``.
+
+    Call the predicate directly rather than spawning a child ``pytest``: nbmake makes the
+    decision at collection time, so a subprocess assertion costs seconds per case, depends
+    on ``uv`` being resolvable inside the child, and cannot be falsified by patching
+    anything in this file.
     """
-    import subprocess
+    from nbmake.pytest_plugin import _should_collect
 
-    def collected(source: Path) -> str:
-        result = subprocess.run(
-            ["uv", "run", "pytest", "--nbmake", str(source), "--collect-only", "-q"],
-            cwd=repo_root,
-            capture_output=True,
-            text=True,
-        )
-        return result.stdout + result.stderr
-
-    tagged = tmp_path / "tag_probe.ipynb"
-    shutil.copy(repo_root / "notebooks/_template.ipynb", tagged)
-
-    # Excluded by nbmake's own rule, despite being a perfectly valid tagged notebook.
-    excluded = tmp_path / "_build" / "excluded_probe.ipynb"
-    excluded.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy(tagged, excluded)
-    assert "excluded_probe" not in collected(excluded), (
-        "a notebook under _build was collected, so the exclusion rule changed"
+    assert not _should_collect(Path("notebooks/_build/probe.ipynb"), True), (
+        "a notebook under _build was collected, so nbmake's exclusion rule changed and "
+        "the lane docs must be revisited"
+    )
+    assert _should_collect(Path("notebooks/01-topic.ipynb"), True), (
+        "a notebook in the lane is not collected, so location is no longer the opt-in"
+    )
+    assert not _should_collect(Path("notebooks/01-topic.ipynb"), False), (
+        "notebooks were collected without --nbmake, so the flag is no longer required"
     )
 
-    # Included purely because of where it lives — no tag can opt it out.
-    assert "notebooks/_template.ipynb" in collected(repo_root / "notebooks"), (
-        "the lane's notebooks are not being collected"
+
+def test_template_reads_the_sample_by_notebook_relative_path(repo_root: Path) -> None:
+    """Pin the one interface that regressed twice in this task.
+
+    The fixture path must be relative to the NOTEBOOK, because nbmake runs a notebook with
+    its own directory as the working directory. The whole-repository resolver in the final
+    verification task resolves every notebook's declared path on disk, which catches a
+    wrong-but-relative path; this assertion additionally pins the intended form so a
+    reviewer sees the contract beside the lane's other tests.
+    """
+    notebook = json.loads(
+        (repo_root / "notebooks/_template.ipynb").read_text(encoding="utf-8")
     )
+    source = "\n".join(
+        "".join(cell["source"]) for cell in notebook["cells"] if cell["cell_type"] == "code"
+    )
+    assert "../data/samples/public_health_indicators.csv" in source
 
 
 def test_no_notebook_uses_an_absolute_path(repo_root: Path) -> None:
@@ -1815,19 +1823,27 @@ def test_suite_pins_ruff_to_the_pre_commit_rev(repo_root: Path) -> None:
     )
 
 
-def test_every_lane_documented_as_planned_actually_is_planned(repo_root: Path) -> None:
-    """Task 8's lane map must not call a lane 'planned' after its task has landed.
+def test_lane_map_agrees_with_the_filesystem(repo_root: Path) -> None:
+    """The lane map must not call a lane 'planned' once its README exists, and must not
+    link a lane whose README is absent.
 
-    This is the assertion that would have caught `data/` staying 'planned' after Task 5
-    created it, and it stops the same drift recurring as later lanes land."""
+    Asserted in BOTH directions so the check cannot silently go stale as `submission/`
+    lands in a later task: a lane with a README must not read 'planned', and a lane
+    reading 'planned' must not have a README. This is the assertion that would have caught
+    `data/`, `notebooks/` and `webapp/` all still reading 'planned' after their lanes had
+    landed.
+    """
     readme = (repo_root / "README.md").read_text(encoding="utf-8")
-    for lane in ("firmware", "notebooks", "webapp", "data"):
-        if (repo_root / lane).is_dir() and (repo_root / lane / "README.md").is_file():
-            row = re.search(rf"^\|.*`?{lane}/`?.*$", readme, re.MULTILINE)
-            assert row, f"README has no lane-map row for {lane}/"
-            assert "planned" not in row.group(0).lower(), (
-                f"{lane}/ has landed but its README row still says 'planned'"
-            )
+    for lane in ("firmware", "notebooks", "webapp", "data", "submission"):
+        row = re.search(rf"^\|.*`?{lane}/`?.*$", readme, re.MULTILINE)
+        if not row:
+            continue
+        landed = (repo_root / lane / "README.md").is_file()
+        says_planned = "planned" in row.group(0).lower()
+        assert landed != says_planned, (
+            f"{lane}/ README exists={landed} but its lane-map row "
+            f"{'still says' if says_planned else 'does not say'} 'planned'"
+        )
 
 
 def test_notebook_relative_paths_resolve_on_disk(repo_root: Path) -> None:
