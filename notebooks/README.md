@@ -98,33 +98,50 @@ but they are not the same build, so a local `--verify` pass is strong evidence a
 guarantee about the hook. Do not change either pin to "fix" the skew; it is a known,
 accepted tradeoff.
 
-## Execution: how CI runs notebooks
+## Execution: how notebooks are selected and run
 
-`uv run pytest` does **not** execute notebooks — running every notebook on every push
-would be slow and would fail on any notebook that is still being written. A notebook is
-opted in explicitly with the tag `nbmake` in the notebook's **top-level** metadata:
+`uv run pytest` does **not** execute notebooks. Execution happens only under the explicit
+`--nbmake` flag.
 
-```json
-"metadata": { "tags": ["nbmake"] }
+**Location is the entire opt-in. There is no tag, marker, or metadata field that
+selects a notebook.** `nbmake`'s collection predicate is:
+
+```python
+nbmake_enabled and p.match("*ipynb") and "_build" not in p.parts
 ```
 
-`pytest` with the `nbmake` plugin collects notebooks carrying that tag and executes them
-as tests. The tag is what selects a notebook; making it the first CI job a new notebook
-opt into is deliberate, because a notebook that cannot run from a clean clone is worse
-than one that does not run at all. [`_template.ipynb`](_template.ipynb) carries the tag
-and is executed by CI, which is what keeps the template honest as the starting point.
+It reads no notebook metadata at all. So **every `*.ipynb` directly in this directory is
+executed** by Task 9's CI job, which runs:
 
-Run one notebook, exactly as CI does:
+```console
+uv run pytest --nbmake notebooks/ -q
+```
+
+Run one notebook the same way:
 
 ```console
 uv run pytest --nbmake notebooks/03-immunization-coverage-trends.ipynb -v
 ```
 
-The notebook executes with **the notebook's own directory as its working
-directory** — `notebooks/`, not the repository root. `nbmake` sets the kernel's CWD to
-the notebook's parent directory, so **every fixture path is written relative to the
-notebook**: from `notebooks/` the committed samples are at `../data/samples/`, and the
-read is `pd.read_csv("../data/samples/public_health_indicators.csv")`.
+The practical consequence is the part worth remembering: **a half-written or scratch
+notebook left in this lane will run in CI and can fail the build.** Being in `notebooks/`
+is what gets it collected, and neither the `_template` underscore nor any metadata entry
+excludes it — I verified that a `_`-prefixed notebook is collected exactly like any other.
+Unfinished work therefore belongs **outside `notebooks/`** (or outside the repository), or
+it must be self-contained enough to execute. The only exclusion `nbmake` applies of its own
+accord is a path containing `_build`, which is its own convention for ignored build output,
+not a general-purpose "do not run this" switch.
+
+Because there is no opt-in marker, choosing to commit a notebook into this lane *is* the
+decision to have it run in CI.
+
+### The working directory is the notebook's own directory
+
+The notebook executes with **the notebook's own directory as its working directory** —
+`notebooks/`, not the repository root. `nbmake` sets the kernel's CWD to the notebook's
+parent directory, so **every fixture path is written relative to the notebook**: from
+`notebooks/` the committed samples are at `../data/samples/`, and the read is
+`pd.read_csv("../data/samples/public_health_indicators.csv")`.
 
 This is the one mechanic in this lane that looks like a bug when you get it wrong. A
 repository-root path such as `data/samples/public_health_indicators.csv` fails under CI
@@ -133,12 +150,14 @@ resolved against `notebooks/`, not the root. Absolute paths (`C:\...`, `/Users/.
 ruled out for the same reason they are everywhere else: they are a dead end on every
 other clone. Write the path relative to the notebook and both problems disappear.
 
-The CI job that runs this is the `notebooks` job, guarded on the pull request touching
-`notebooks/`; it runs `uv sync --locked` and then `uv run pytest --nbmake notebooks/ -q`.
+### The CI job
 
-Because the notebook is executed, a failure in one cell fails the build. Keep long-running
-work out of the template path, and prefer a deterministic seed over a lucky one — an
-unseeded notebook passes on your machine and fails on the judge's.
+Task 9 adds the workflow; until it lands, nothing runs these notebooks automatically. The
+`notebooks` job, guarded on a pull request touching `notebooks/`, will run
+`uv sync --locked` and then `uv run pytest --nbmake notebooks/ -q`. A failure in any cell
+fails the build, so keep long-running work out of the template path, and prefer a
+deterministic seed over a lucky one — an unseeded notebook passes on your machine and
+fails on the judge's.
 
 ## Related documents
 

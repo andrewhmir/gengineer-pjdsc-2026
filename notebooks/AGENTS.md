@@ -41,10 +41,10 @@ uv run nbstripout --verify notebooks/<name>.ipynb
 limited to stored output — the full semantics belong in the lane's `README.md`.
 
 The lane's hygiene tests live in [`../tests/test_notebooks.py`](../tests/test_notebooks.py); run
-them with `uv run pytest`. The suite does not execute notebooks. A notebook that is meant to run
-in CI is opted in explicitly by carrying the `nbmake` tag in its top-level metadata; that
-mechanism, and the working-directory rule that decides how a notebook writes its fixture paths,
-are in the lane's `README.md`.
+them with `uv run pytest`. The suite does not execute notebooks. Under `--nbmake`, **every**
+`*.ipynb` in this directory is executed — location is the only opt-in and there is no tag to drop —
+so never leave a half-written or scratch notebook here expecting it to be skipped; the full
+mechanics and the working-directory rule for fixture paths are in the lane's `README.md`.
 
 ## Notes
 
