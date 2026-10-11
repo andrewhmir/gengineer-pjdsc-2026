@@ -44,23 +44,31 @@ boundaries, is in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 | Path | Lane | State | What lives there |
 |---|---|---|---|
 | [`firmware/`](firmware/) | Firmware | skeleton | CircuitPython for the sensor node; copied wholesale to the board's `CIRCUITPY` USB drive. Host tests only — not yet flashed. |
-| `data/` | Data | planned | Data policy and committed sample fixtures. `raw/` and `interim/` hold local-only data that is never committed. |
-| `notebooks/` | Data / analysis | planned | Analysis notebooks, with outputs stripped on commit. |
-| `webapp/` | Web | planned | The user-facing application. Framework not yet chosen. |
+| [`data/`](data/) | Data | structure | Data policy and committed sample fixtures. `raw/` and `interim/` hold local-only data that is never committed. No analysis yet. |
+| [`notebooks/`](notebooks/) | Data / analysis | template | Analysis notebooks, with outputs stripped on commit. A template is committed; no analysis yet. |
+| `webapp/` | Web | undecided | The user-facing application. Framework not yet chosen; [`webapp/README.md`](webapp/README.md) records the deferred decision. |
 | `submission/` | Cross-cutting | planned | Slide deck, demo video link, and the submission checklist with its hard limits. |
 | [`tests/`](tests/) | Cross-cutting | present | The pytest suite that gates every lane. |
 | [`docs/`](docs/) | Cross-cutting | present | Human-facing documentation: architecture, data policy, citations, owner setup. |
 | `specs/` | Cross-cutting | present | Frozen design records: the approved specification and implementation plan. |
 
-A **planned** lane is a directory that this bootstrap already assigns a purpose and rules
-to, and that its own lane task creates. Nothing in this repository pretends a planned lane
-is implemented: the firmware, data, notebook, web, and submission lanes land as their own
-reviewed changes, and until then the repository contains the structure, the policy, and
+The **State** column says how far a lane has got, not how much it matters:
+
+- **skeleton**, **structure**, **template** — the lane's scaffolding, policy, and rules are
+  committed; the feature the lane exists for is not implemented yet.
+- **present** — in place for the bootstrap, with nothing further sequenced.
+- **undecided** — a deliberate placeholder: the directory exists, and the decision it waits
+  on has not been made. `webapp/` is the only one, and its lane readme records why.
+- **planned** — the directory does not exist yet, and its own lane task creates it.
+  `submission/` is the only one left.
+
+Nothing in this repository pretends an unfinished lane is finished: each lane lands as its
+own reviewed change, and until then the repository contains the structure, the policy, and
 the gates rather than the features. The lanes are sequenced in
-[`specs/2026-10-10-repo-bootstrap-plan.md`](specs/2026-10-10-repo-bootstrap-plan.md).
-A planned lane is shown as a plain path rather than a link, because linking to a directory
-that does not exist yet would be a dead link in a judged submission; the lane tasks turn
-each one into a link as they create it.
+[`specs/2026-10-10-repo-bootstrap-plan.md`](specs/2026-10-10-repo-bootstrap-plan.md). A
+**planned** lane is shown as a plain path rather than a link, because linking to a
+directory that does not exist yet would be a dead link in a judged submission; its lane
+task turns it into a link as it creates the directory.
 
 ## Quickstart
 
@@ -89,6 +97,15 @@ These are the only commands this repository provides:
 | `uv run ruff check .` | Lint. |
 | `uv run ruff format --check .` | Verify formatting without writing. |
 | `uv run mypy` | Type-check `tests/`. |
+
+The local gate before a push is these four, and they mirror what CI runs:
+
+```console
+uv run ruff format --check .
+uv run ruff check .
+uv run mypy
+uv run pytest
+```
 
 There is deliberately no `Makefile` and no `src/` package: the analysis code lives in
 notebooks and the web code in `webapp/`, so a package abstraction would be a decision
