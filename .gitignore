@@ -14,6 +14,10 @@ venv/
 .coverage
 coverage.xml
 htmlcov/
+# `uv`'s default cache lives outside the workspace, which a confined sandbox cannot
+# write to; setting UV_CACHE_DIR here is the documented workaround, so the directory
+# it creates must never become committable junk.
+.uvcache/
 
 # pytest's tmp_path root. On this machine tempfile.gettempdir() resolves to the
 # working directory, so pytest creates pytest-of-<user>/ at the repository root
