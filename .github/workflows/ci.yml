@@ -1,0 +1,214 @@
+name: CI
+
+# Runs on every push to main and on every pull request. There is no `paths:`
+# filter on purpose: a filtered workflow would not report at all for a pull
+# request that touches only unmatched paths, and a required status check that
+# never reports leaves the pull request permanently unmergeable. Changed-path
+# gating happens per job instead, off the `changes` job.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  # Always runs. Computes the changed-file set every other job gates on. A job
+  # that never runs cannot be a required check, so this one is deliberately
+  # unguarded.
+  changes:
+    name: Detect changed paths
+    runs-on: ubuntu-latest
+    outputs:
+      python: ${{ steps.changed.outputs.python }}
+      notebooks: ${{ steps.changed.outputs.notebooks }}
+      firmware: ${{ steps.changed.outputs.firmware }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # A shallow clone cannot diff against the pull request base.
+          fetch-depth: 0
+
+      - name: Compute changed paths
+        id: changed
+        shell: bash
+        run: |
+          set -euo pipefail
+          # On a pull request, diff the pull request base against the head
+          # commit. On a push, diff the previous commit. `github.event.pull_request`
+          # is empty on a push event, and an absent property resolves to an empty
+          # string, so the test below is what selects the pull request path.
+          if [ -n "${{ github.event.pull_request.base.sha }}" ]; then
+            base="${{ github.event.pull_request.base.sha }}"
+          else
+            base="HEAD~1"
+          fi
+          echo "Diffing ${base}...${{ github.sha }}"
+          git diff --name-only "${base}...${{ github.sha }}" > changed-files.txt
+          cat changed-files.txt
+
+          # `tests/` is matched explicitly: the suite is not exclusively Python
+          # (`tests/AGENTS.md`, fixtures), and this output also gates `test`. A
+          # pull request that edits only test files is the change most likely to
+          # break the suite, so it must not be the one case that skips it.
+          #
+          # `grep -q` exits 1 on no match, which would abort this script under
+          # `set -e`; the `|| echo` fallback is the load-bearing part.
+          if grep -qE '(^|/)pyproject\.toml$|(^|/)uv\.lock$|(^|/)tests/|\.py$' changed-files.txt; then
+            echo "python=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "python=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          if grep -q '^notebooks/' changed-files.txt; then
+            echo "notebooks=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "notebooks=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          if grep -q '^firmware/' changed-files.txt; then
+            echo "firmware=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "firmware=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  # Guarded: an unimplemented or untouched lane must never fail a pull request.
+  lint:
+    name: Lint and types
+    needs: changes
+    if: needs.changes.outputs.python == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install the locked environment
+        run: uv sync --locked
+
+      - name: Check formatting
+        run: uv run ruff format --check .
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Type-check
+        run: uv run mypy
+
+  test:
+    name: Tests
+    needs: changes
+    if: needs.changes.outputs.python == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install the locked environment
+        run: uv sync --locked
+
+      - name: Run the suite
+        run: uv run pytest -q
+
+  # Being in notebooks/ is the entire opt-in for nbmake: its collection
+  # predicate is `nbmake_enabled and p.match("*ipynb") and "_build" not in
+  # p.parts`, so it reads no notebook metadata and there is no tag to opt out
+  # with. Every *.ipynb in the lane is executed here.
+  notebooks:
+    name: Execute notebooks
+    needs: changes
+    if: needs.changes.outputs.notebooks == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install the locked environment
+        run: uv sync --locked
+
+      - name: Run every notebook in the lane
+        run: uv run pytest --nbmake notebooks/ -q
+
+  # Honest scope: py_compile proves syntax and nothing else. It cannot prove
+  # on-device behaviour, which needs a human flashing real hardware. The
+  # firmware lane's README states that limitation rather than implying it away.
+  firmware:
+    name: Byte-compile firmware
+    needs: changes
+    if: needs.changes.outputs.firmware == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # `find` is used rather than a shell glob so the check is recursive, and
+      # `-print0`/`-0` keep paths with spaces intact. firmware/lib/ is vendored
+      # third-party code and is excluded, matching the lane rule that it is
+      # never edited.
+      - name: Byte-compile every first-party firmware module
+        run: |
+          find firmware -name '*.py' -not -path '*/lib/*' -print0 \
+            | xargs -0 python -m py_compile
+
+  # Always runs: secret scanning cannot be skipped by a changed-path guard,
+  # which is exactly what makes it an enforcement point rather than a backstop.
+  # The gitleaks CLI is installed directly instead of using
+  # gitleaks/gitleaks-action@v2, whose v2 release is license-gated and requires
+  # a GITLEAKS_LICENSE secret for organization-owned repositories; that would
+  # fail this job for reasons unrelated to the code. There is deliberately no
+  # gitleaks pre-commit hook either — the upstream hook needs a Go toolchain.
+  secrets:
+    name: Scan for secrets
+    runs-on: ubuntu-latest
+    env:
+      GITLEAKS_VERSION: 8.28.0
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The scan must cover the whole history, not just the head commit.
+          fetch-depth: 0
+
+      - name: Install the gitleaks CLI
+        run: |
+          set -euo pipefail
+          base="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}"
+          archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl --fail --silent --show-error --location --output "$archive" "${base}/${archive}"
+          curl --fail --silent --show-error --location --output checksums.txt "${base}/gitleaks_${GITLEAKS_VERSION}_checksums.txt"
+          grep " ${archive}\$" checksums.txt | sha256sum --check --strict
+          tar --extract --gzip --file "$archive" gitleaks
+          ./gitleaks version
+
+      - name: Scan the full history
+        run: ./gitleaks detect --config .gitleaks.toml --redact -v
+
+  # The aggregate gate, and the status check the ruleset requires. It must run
+  # even when every job above was skipped, because a required check whose job is
+  # skipped never reports — and a check that never reports leaves pull requests
+  # permanently unmergeable once enforcement is on. A job that did not run is
+  # therefore a pass. A job that failed, or was cancelled, is not.
+  ci-success:
+    name: ci-success
+    needs: [changes, lint, test, notebooks, firmware, secrets]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify every required job passed or was skipped
+        shell: bash
+        run: |
+          if echo '${{ toJSON(needs) }}' | jq -e 'to_entries | map(.value.result) | any(. == "failure" or . == "cancelled")' > /dev/null; then
+            echo "A required job failed or was cancelled."
+            exit 1
+          fi
+          echo "All required jobs passed or were skipped."

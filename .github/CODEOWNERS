@@ -1,0 +1,34 @@
+# CODEOWNERS
+#
+# Review requests route to the owner of the path that changed. GitHub only offers
+# a collaborator as a reviewer once their handle appears here, so adding a
+# teammate to this file is part of the add-a-teammate procedure in
+# ../CONTRIBUTING.md — the other two steps are the collaborator invitation and
+# the citation entry in ../CITATION.cff.
+#
+# At bootstrap the repository has exactly one contributor, so every path is
+# owned by @andrewhmir. Add a teammate by appending their handle to the default
+# line and to the lane lines they own, for example:
+#
+#     *       @andrewhmir @teammate
+#
+# The last matching pattern wins, so the specific lines below must stay after
+# the default. Keeping one line per lane means a lane owner can be added without
+# granting review rights over the whole repository.
+
+# Default: anything not matched by a more specific line below.
+*           @andrewhmir
+
+# Lanes
+/firmware/  @andrewhmir
+/notebooks/ @andrewhmir
+/webapp/    @andrewhmir
+/data/      @andrewhmir
+
+# Cross-cutting paths, which are not a fourth lane.
+/docs/      @andrewhmir
+/specs/     @andrewhmir
+/tests/     @andrewhmir
+
+# Repository platform configuration: workflow, templates, Dependabot, CODEOWNERS.
+/.github/   @andrewhmir

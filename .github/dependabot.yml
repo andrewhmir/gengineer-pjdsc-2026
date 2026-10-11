@@ -1,0 +1,19 @@
+version: 2
+updates:
+  # Python dependencies, resolved from pyproject.toml through uv.lock.
+  - package-ecosystem: uv
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+
+  # The workflow in .github/workflows/ci.yml pins action majors; keep them moving.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
