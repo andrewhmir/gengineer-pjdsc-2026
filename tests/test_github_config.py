@@ -29,9 +29,42 @@ def test_ci_workflow_is_valid_yaml_with_expected_jobs(repo_root: Path) -> None:
 
 
 def test_ci_has_aggregate_gate(repo_root: Path) -> None:
-    """A required check whose job is skipped never reports, which would deadlock PRs."""
+    """A required check whose job is skipped never reports, which would deadlock PRs.
+
+    The gate is asserted **semantically**, not merely as a key that exists. An earlier
+    version checked only `"ci-success" in workflow["jobs"]`, which left every one of these
+    regressions green: dropping `if: always()`, dropping a job from `needs`, pointing the
+    gate at the wrong job set, or inverting the polarity. YAML parsing validates structure,
+    not meaning, and Task 11 makes this exact job name a required status check.
+    """
     workflow = yaml.safe_load((repo_root / ".github/workflows/ci.yml").read_text(encoding="utf-8"))
-    assert "ci-success" in workflow["jobs"]
+    gate = workflow["jobs"]["ci-success"]
+
+    assert gate["if"] == "always()", (
+        "the aggregate gate must run even when upstream jobs are skipped, or a skipped "
+        "required check never reports and pull requests can never merge"
+    )
+    assert set(gate["needs"]) == EXPECTED_JOBS - {"ci-success"}, (
+        "the gate must depend on every other job, or a failing lane could report green"
+    )
+    script = " ".join(str(step.get("run", "")) for step in gate["steps"])
+    assert "failure" in script and "cancelled" in script, (
+        "the gate must fail on a failed or cancelled job; it may only treat `skipped` "
+        "and `success` as passing"
+    )
+    assert "jq" in script and "command -v jq" in script, (
+        "the gate must verify jq exists, or a missing jq exits 127 and the gate reports "
+        "success even when a required job failed"
+    )
+
+
+def test_ci_workflow_triggers_on_push_and_pull_request(repo_root: Path) -> None:
+    """Deleting the triggers would make every check vacuous without failing anything."""
+    workflow = yaml.safe_load((repo_root / ".github/workflows/ci.yml").read_text(encoding="utf-8"))
+    # `on` parses as the boolean True key in YAML 1.1, so accept either spelling.
+    triggers = workflow.get("on", workflow.get(True))
+    assert triggers is not None, "the workflow has no `on:` triggers at all"
+    assert "pull_request" in triggers and "push" in triggers
 
 
 def test_codeowners_covers_every_lane(repo_root: Path) -> None:
@@ -55,8 +88,26 @@ def test_gitattributes_forces_lf_for_lockfile_and_python(repo_root: Path) -> Non
 
 
 def test_ci_does_not_run_lanes_that_do_not_exist(repo_root: Path) -> None:
-    """A job must be guarded, or an unimplemented lane fails every pull request."""
+    """A job must be guarded on ITS OWN changed-path output.
+
+    Asserting only that an `if` key exists leaves three regressions green: pointing a guard
+    at the wrong output (running `test` off the `notebooks` signal), inverting it
+    (`== 'false'`), or swapping two jobs' guards. Each guard is therefore pinned to its own
+    output name.
+    """
     workflow = yaml.safe_load((repo_root / ".github/workflows/ci.yml").read_text(encoding="utf-8"))
-    for job_name in ("lint", "test", "notebooks", "firmware"):
-        job = workflow["jobs"][job_name]
-        assert "if" in job, f"job {job_name} is not guarded by a changed-path condition"
+    own_output = {
+        "lint": "python",
+        "test": "python",
+        "notebooks": "notebooks",
+        "firmware": "firmware",
+    }
+    for job_name, output in own_output.items():
+        guard = workflow["jobs"][job_name]["if"]
+        assert f"changes.outputs.{output}" in guard, (
+            f"job {job_name} is not guarded on its own `{output}` output: {guard!r}"
+        )
+        assert "== 'true'" in guard, (
+            f"job {job_name}'s guard does not require true, so it may run (or skip) "
+            f"inverted: {guard!r}"
+        )

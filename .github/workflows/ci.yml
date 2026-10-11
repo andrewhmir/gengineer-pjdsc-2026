@@ -53,8 +53,9 @@ jobs:
           # pull request that edits only test files is the change most likely to
           # break the suite, so it must not be the one case that skips it.
           #
-          # `grep -q` exits 1 on no match, which would abort this script under
-          # `set -e`; the `|| echo` fallback is the load-bearing part.
+          # The `if` form is what keeps `set -e` from aborting on a no-match:
+          # a command in an `if` condition is errexit-exempt, so no `|| echo`
+          # fallback is needed here.
           if grep -qE '(^|/)pyproject\.toml$|(^|/)uv\.lock$|(^|/)tests/|\.py$' changed-files.txt; then
             echo "python=true" >> "$GITHUB_OUTPUT"
           else
@@ -207,6 +208,10 @@ jobs:
       - name: Verify every required job passed or was skipped
         shell: bash
         run: |
+          # Fail closed if jq is missing. Without this, a missing jq makes the
+          # pipeline exit 127, the `then` branch is never taken, and the gate
+          # would report SUCCESS even when a required job failed.
+          command -v jq > /dev/null || { echo "jq is required but was not found"; exit 1; }
           if echo '${{ toJSON(needs) }}' | jq -e 'to_entries | map(.value.result) | any(. == "failure" or . == "cancelled")' > /dev/null; then
             echo "A required job failed or was cancelled."
             exit 1

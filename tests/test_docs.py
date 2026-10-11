@@ -75,13 +75,26 @@ def test_link_check_has_documents_to_scan(repo_root: Path) -> None:
 
 
 def markdown_documents(repo_root: Path) -> list[Path]:
-    """Markdown a reader navigates from the repository root or from `docs/`.
+    """Every markdown file a reader can navigate from, in the working tree.
 
-    `specs/` is deliberately excluded: it is a frozen controller-owned record that
-    deliberately references files as they are *planned* rather than as they exist, so a
-    link there is not a defect.
+    Discovered by walking the tree rather than by a hard-coded list, so a lane added
+    later is link-checked automatically instead of silently escaping coverage. An
+    earlier version globbed only `*.md` at the root plus `docs/*.md`, which left every
+    lane README — `firmware/`, `data/`, `notebooks/`, `webapp/`, `submission/` — and all
+    five lane `AGENTS.md` files unchecked.
+
+    Excluded, each for a stated reason:
+    - `specs/` is a frozen controller-owned record that deliberately references files as
+      they were *planned* rather than as they exist, so a link there is not a defect.
+    - `.venv/`, `.worktrees/` and `.superpowers/` are tooling working directories, and
+      `.pytest_cache/` ships its own README that the project does not own.
     """
-    return sorted(list(repo_root.glob("*.md")) + list((repo_root / "docs").glob("*.md")))
+    excluded = {".venv", ".worktrees", ".superpowers", ".pytest_cache", "specs", "node_modules"}
+    return sorted(
+        path
+        for path in repo_root.rglob("*.md")
+        if not excluded & set(path.relative_to(repo_root).parts)
+    )
 
 
 @pytest.mark.parametrize("document", DOCUMENTS_TO_SCAN)
