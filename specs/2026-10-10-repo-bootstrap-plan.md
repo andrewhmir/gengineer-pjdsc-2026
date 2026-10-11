@@ -1002,7 +1002,7 @@ git commit -m "feat(data): add data policy structure and committed sample fixtur
 
 **Interfaces:**
 - Consumes: `data/samples/public_health_indicators.csv` with columns `region,indicator,year,value` (Task 5); `notebooks/AGENTS.md` (Task 3).
-- Produces: `notebooks/_template.ipynb`, which carries the `nbmake` marker tag so Task 9's CI job can select it. The tag is `nbmake` in the notebook's top-level `metadata.tags` list.
+- Produces: `notebooks/_template.ipynb`. **There is no tag-based opt-in to document.** Verified from nbmake's source: its collection predicate is `nbmake_enabled and p.match("*ipynb") and "_build" not in p.parts`, so Task 9's `uv run pytest --nbmake notebooks/ -q` executes **every** `.ipynb` in the lane, and being in `notebooks/` is the whole opt-in. A notebook-prefix convention such as `_scratch.ipynb` does **not** exclude a notebook — it is collected too. Do not describe a `metadata.tags` marker as selecting anything, and do not assert one.
 
 **Read this before writing either notebooks file — it settles a real ambiguity about duplication.**
 The lane `README.md` is human-facing and states conventions; the lane `AGENTS.md` is agent-facing
@@ -1036,29 +1036,85 @@ def test_notebook_lane_has_a_template(repo_root: Path) -> None:
     assert (repo_root / "notebooks/_template.ipynb").is_file()
 
 
-def test_template_notebook_has_no_outputs(repo_root: Path) -> None:
-    """Pinned Review Focus item: committed outputs leak data and bloat the repo."""
-    notebook = json.loads((repo_root / "notebooks/_template.ipynb").read_text(encoding="utf-8"))
-    for index, cell in enumerate(notebook["cells"]):
-        if cell["cell_type"] != "code":
-            continue
-        assert not cell.get("outputs"), f"cell {index} contains stored output"
-        assert cell.get("execution_count") is None, f"cell {index} has an execution count"
+def test_every_notebook_has_no_outputs(repo_root: Path) -> None:
+    """Pinned Review Focus item: committed outputs leak data and bloat the repo.
+
+    Iterates the whole lane, not just the template. nbmake does not fail a notebook that
+    carries stored outputs, and the nbstripout pre-commit hook cannot run on the
+    maintainer's machine, so a committed output in a future numbered notebook would
+    otherwise be caught by nothing.
+    """
+    for path in notebook_paths(repo_root):
+        notebook = json.loads(path.read_text(encoding="utf-8"))
+        for index, cell in enumerate(notebook["cells"]):
+            if cell["cell_type"] != "code":
+                continue
+            assert not cell.get("outputs"), f"{path.name} cell {index} contains stored output"
+            assert cell.get("execution_count") is None, (
+                f"{path.name} cell {index} has an execution count"
+            )
 
 
-def test_template_notebook_is_marked_for_nbmake(repo_root: Path) -> None:
-    notebook = json.loads((repo_root / "notebooks/_template.ipynb").read_text(encoding="utf-8"))
-    assert "nbmake" in notebook.get("metadata", {}).get("tags", [])
+def test_notebook_selection_is_path_based_not_tag_based(repo_root: Path) -> None:
+    """Guard the collection mechanism, replacing a test that pinned an inert field.
 
+    An earlier version asserted that a top-level ``metadata.tags`` entry named ``nbmake``
+    selected the notebook for CI. It does not. nbmake's collection predicate is
+    ``nbmake_enabled and p.match("*ipynb") and "_build" not in p.parts`` — location is the
+    only opt-in, and a cell-level ``tags`` list is used solely for ``raises-exception`` and
+    ``skip-execution``. Asserting the notebook tag would pin a field nothing consumes and
+    would mislead a future author into thinking a notebook can opt out by dropping it.
 
-def test_template_notebook_uses_relative_sample_path(repo_root: Path) -> None:
-    """Absolute paths break for every other clone and for the judges."""
-    notebook = json.loads((repo_root / "notebooks/_template.ipynb").read_text(encoding="utf-8"))
-    source = "\n".join(
-        "".join(cell["source"]) for cell in notebook["cells"] if cell["cell_type"] == "code"
+    The assertion is behaviour, not strings: a temp notebook tagged ``nbmake`` under a
+    directory excluded by nbmake's rule must NOT be collected, and the same file placed in
+    the lane MUST be. ``tmp_path`` is supplied by pytest, so nothing is written into the
+    repository.
+    """
+    import subprocess
+
+    def collected(source: Path) -> str:
+        result = subprocess.run(
+            ["uv", "run", "pytest", "--nbmake", str(source), "--collect-only", "-q"],
+            cwd=repo_root,
+            capture_output=True,
+            text=True,
+        )
+        return result.stdout + result.stderr
+
+    tagged = tmp_path / "tag_probe.ipynb"
+    shutil.copy(repo_root / "notebooks/_template.ipynb", tagged)
+
+    # Excluded by nbmake's own rule, despite being a perfectly valid tagged notebook.
+    excluded = tmp_path / "_build" / "excluded_probe.ipynb"
+    excluded.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy(tagged, excluded)
+    assert "excluded_probe" not in collected(excluded), (
+        "a notebook under _build was collected, so the exclusion rule changed"
     )
-    assert "../data/samples/public_health_indicators.csv" in source
-    assert "C:\\" not in source and "/Users/" not in source
+
+    # Included purely because of where it lives — no tag can opt it out.
+    assert "notebooks/_template.ipynb" in collected(repo_root / "notebooks"), (
+        "the lane's notebooks are not being collected"
+    )
+
+
+def test_no_notebook_uses_an_absolute_path(repo_root: Path) -> None:
+    """Absolute paths break for every other clone and for the judges.
+
+    Iterates the lane so a future notebook cannot slip an absolute path past a check that
+    only ever looked at the template. The path itself is resolved by the whole-repository
+    test in the final verification task.
+    """
+    for path in notebook_paths(repo_root):
+        notebook = json.loads(path.read_text(encoding="utf-8"))
+        source = "\n".join(
+            "".join(cell["source"])
+            for cell in notebook["cells"]
+            if cell["cell_type"] == "code"
+        )
+        assert "C:\\" not in source and "/Users/" not in source, (
+            f"{path.name} contains an absolute path"
+        )
 ```
 
 - [ ] **Step 2: Run the test to verify it fails**
@@ -1070,7 +1126,7 @@ Expected: FAIL — `notebooks/_template.ipynb` does not exist.
 
 A valid notebook JSON satisfying every assertion above. Required content:
 
-- `nbformat: 4`, `nbformat_minor: 5`, `metadata.tags: ["nbmake"]`.
+- `nbformat: 4`, `nbformat_minor: 5`.
 - A markdown cell stating the notebook's purpose and the rule that reusable logic does not live in cells.
 - A code cell reading `../data/samples/public_health_indicators.csv` — **relative to the notebook, not to the repository root** — with `pandas.read_csv`. Verified: nbmake executes a notebook with the notebook's own directory as the process CWD, so a repository-root-relative path resolves to `notebooks/data/samples/…` and raises `FileNotFoundError`. Task 9's CI runs `pytest --nbmake notebooks/`, so the notebook-relative form is the one that executes. It is still a relative path, so the no-absolute-paths rule holds.
 - A second code cell computing a simple groupby over `indicator` and `value`.
@@ -1078,7 +1134,7 @@ A valid notebook JSON satisfying every assertion above. Required content:
 
 - [ ] **Step 4: Create `notebooks/README.md`**
 
-Naming convention (`NN-topic.ipynb`), what belongs in a notebook versus a module, how `nbstripout` and the pre-commit hook protect the repository, how CI runs opted-in notebooks with `nbmake`, and a pointer to `notebooks/AGENTS.md`.
+Naming convention (`NN-topic.ipynb`), what belongs in a notebook versus a module, how `nbstripout` and the pre-commit hook protect the repository, **how `nbmake` actually selects notebooks** (by location: every `*.ipynb` in the lane runs; there is no tag opt-in, and nbmake's own rule only excludes paths containing `_build`), and a pointer to `notebooks/AGENTS.md`. State plainly that because location is the only opt-in, a half-written or scratch notebook in the lane **will** be executed by CI, so unfinished work belongs outside `notebooks/` or must be self-contained.
 
 - [ ] **Step 5: Run the tests to verify they pass**
 
@@ -1118,7 +1174,7 @@ failure as "my outputs are still there" when the real cause is an unnormalised c
 
 ```bash
 git add notebooks/ tests/test_notebooks.py
-git commit -m "feat(notebooks): add notebook template with nbmake marker and sample fixture"
+git commit -m "feat(notebooks): add notebook template with sample fixture"
 ```
 
 ---

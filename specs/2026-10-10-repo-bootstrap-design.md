@@ -306,7 +306,7 @@ unimplemented lane never fails a pull request.
 | `changes` | always | Computes changed paths; other jobs gate on it |
 | `lint` | root Python changed | `ruff check`, `ruff format --check`, `mypy` |
 | `test` | root or `tests/` changed | `pytest -q` |
-| `notebooks` | `notebooks/` changed | `nbmake` executes opted-in notebooks |
+| `notebooks` | `notebooks/` changed | `nbmake` executes every `notebooks/*.ipynb`. **There is no tag-based opt-in:** nbmake's collection predicate is `nbmake_enabled and p.match("*ipynb") and "_build" not in p.parts`, so being in `notebooks/` is the opt-in. The `nbmake` marker tag `nbmake` has no effect and is not used. |
 | `firmware` | `firmware/` changed | `py_compile` all firmware Python |
 | `secrets` | always | Enforcement point for secret scanning: installs and runs the gitleaks CLI (`gitleaks detect --config .gitleaks.toml --redact -v`) over full history. Not a backstop — there is deliberately no pre-commit hook, because that hook needs a Go toolchain. The free CLI is used rather than `gitleaks/gitleaks-action@v2`, which is license-gated. |
 | `ci-success` | always | Aggregate gate reporting **success** when upstream jobs were skipped |
