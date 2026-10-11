@@ -67,6 +67,27 @@ def test_ci_workflow_triggers_on_push_and_pull_request(repo_root: Path) -> None:
     assert "pull_request" in triggers and "push" in triggers
 
 
+def test_ci_push_diff_covers_the_whole_push(repo_root: Path) -> None:
+    """A push must diff every commit it delivered, not just the last one.
+
+    Regression guard for a bug that shipped green. The script used ``HEAD~1`` on the
+    push path, so a three-commit push was diffed down to its final commit only. The
+    changed-path outputs then saw a single test file, ``lint`` and ``test`` were
+    skipped, and because the aggregate gate treats skipped as passed, ``ci-success``
+    reported success while the suite never ran. Observed on the very first real run
+    (run 38146155506: the `Tests` job concluded `skipped`).
+    """
+    content = (repo_root / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+    assert "github.event.before" in content, (
+        "the push path must diff from `github.event.before`, or a multi-commit push is "
+        "only partially checked"
+    )
+    assert 'base="HEAD~1"' not in content, (
+        "diffing `HEAD~1` on push inspects only the last commit of the push, letting "
+        "`ci-success` report green while the suite is skipped"
+    )
+
+
 def test_codeowners_covers_every_lane(repo_root: Path) -> None:
     content = (repo_root / ".github/CODEOWNERS").read_text(encoding="utf-8")
     for lane in ("firmware/", "notebooks/", "webapp/", "data/", "docs/", "specs/", "tests/"):

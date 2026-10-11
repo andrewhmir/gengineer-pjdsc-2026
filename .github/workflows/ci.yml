@@ -35,14 +35,27 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # On a pull request, diff the pull request base against the head
-          # commit. On a push, diff the previous commit. `github.event.pull_request`
-          # is empty on a push event, and an absent property resolves to an empty
-          # string, so the test below is what selects the pull request path.
+          # Select the diff range.
+          #
+          # A pull request diffs its base against the head commit.
+          #
+          # A push must diff the SHA range the push actually delivered
+          # (`github.event.before`..`github.sha`), NOT `HEAD~1`. Diffing `HEAD~1`
+          # inspects only the LAST commit of the push, so a multi-commit push is
+          # mostly unchecked: on this repository's own first push of three commits
+          # it saw only the final one, skipped `lint` and `test`, and still let
+          # `ci-success` report green. A broad push is the normal case, so that was
+          # a silent pass on almost everything.
+          #
+          # The fallback covers a first push to a branch, where `before` is the
+          # all-zero SHA and no parent range exists: diff the full history instead.
           if [ -n "${{ github.event.pull_request.base.sha }}" ]; then
             base="${{ github.event.pull_request.base.sha }}"
+          elif [ -n "${{ github.event.before }}" ] \
+            && [ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]; then
+            base="${{ github.event.before }}"
           else
-            base="HEAD~1"
+            base="$(git rev-list --max-parents=0 HEAD | tail -1)"
           fi
           echo "Diffing ${base}...${{ github.sha }}"
           git diff --name-only "${base}...${{ github.sha }}" > changed-files.txt
