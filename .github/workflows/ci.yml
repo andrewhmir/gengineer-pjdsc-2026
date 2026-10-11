@@ -57,6 +57,19 @@ jobs:
           else
             base="$(git rev-list --max-parents=0 HEAD | tail -1)"
           fi
+
+          # The base must EXIST in this clone. After a history rewrite (force-push,
+          # amend, rebase) `github.event.before` names a commit that is no longer
+          # reachable, and `git diff base...sha` then dies with
+          # "fatal: Invalid symmetric difference expression" (exit 128) — which fails
+          # the `changes` job and, correctly, the aggregate gate. Observed on this
+          # repository's own force-push. So fall back through progressively wider,
+          # always-present bases rather than trusting the event payload.
+          if ! git cat-file -e "${base}^{commit}" 2>/dev/null; then
+            echo "Base ${base} is not present in this clone; selecting an existing base."
+            base="$(git merge-base HEAD origin/main 2>/dev/null \
+              || git rev-list --max-parents=0 HEAD | tail -1)"
+          fi
           echo "Diffing ${base}...${{ github.sha }}"
           git diff --name-only "${base}...${{ github.sha }}" > changed-files.txt
           cat changed-files.txt

@@ -88,6 +88,24 @@ def test_ci_push_diff_covers_the_whole_push(repo_root: Path) -> None:
     )
 
 
+def test_ci_handles_a_base_that_no_longer_exists(repo_root: Path) -> None:
+    """A force-push leaves `github.event.before` naming an unreachable commit.
+
+    Regression guard for a failure observed on this repository's own force-push:
+    `git diff 8c4ea5b...2e1e79b` died with "fatal: Invalid symmetric difference
+    expression" (exit 128), the `changes` job failed, and the aggregate gate failed with
+    it. Any rebase, amend, or squash-merge of a pushed branch can do this, so the script
+    must verify the base exists in the clone and fall back to one that does.
+    """
+    content = (repo_root / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+    assert "git cat-file -e" in content, (
+        "the script must verify the chosen base exists, or a rewritten history breaks CI"
+    )
+    assert "git merge-base HEAD origin/main" in content, (
+        "a missing base must fall back to a commit that exists, not be used blindly"
+    )
+
+
 def test_codeowners_covers_every_lane(repo_root: Path) -> None:
     content = (repo_root / ".github/CODEOWNERS").read_text(encoding="utf-8")
     for lane in ("firmware/", "notebooks/", "webapp/", "data/", "docs/", "specs/", "tests/"):
