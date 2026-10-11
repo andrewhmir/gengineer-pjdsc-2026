@@ -66,9 +66,10 @@ decision. The repository changes at that point, in that same change:
   manifest as part of the root project.
 
 Neither exists today, and **[`AGENTS.md`](AGENTS.md) forbids creating either in
-advance**. A placeholder manifest would assert a decision that has not been made. The
-repository's placeholder tests in `tests/test_placeholders.py` enforce exactly that, so a
-future reader can tell the difference between "not decided yet" and "forgotten".
+advance**. A placeholder manifest would assert a decision that has not been made.
+`tests/test_placeholders.py` asserts this lane's directory contents exactly, so the
+manifest half of that promise is enforced by CI rather than by convention — and a future
+reader can tell the difference between "not decided yet" and "forgotten".
 
 ## Where to go next
 

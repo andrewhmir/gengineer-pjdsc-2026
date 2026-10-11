@@ -7,13 +7,9 @@ rules still apply.
 ## No framework has been chosen
 
 **No framework has been chosen, and no framework decision has been made.** This lane is a
-deliberate placeholder. It exists so that the lane is discoverable and so the absence of a
-decision is explicit rather than accidental — not because web work has started.
-
-The decision has **not been made** because it cannot be made yet: the choice follows from
-the competition problem statement, which is not fixed. Once it is fixed, a human chooses
-the framework, records the decision, and only then does code appear in this lane. See the
-deferred-decision record in [`docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md).
+deliberate placeholder, not started work. The decision record, the candidate directions,
+and the criteria for choosing all live in [`README.md`](README.md) — read that before
+proposing any web work, and do not restate it here.
 
 ## Hard rules
 
@@ -22,8 +18,8 @@ deferred-decision record in [`docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md).
   framework decision made by an agent, which is exactly what must not happen.
 - **Do not add dependencies**, and do not add a dependency manifest: no `package.json`,
   no `pyproject.toml`, no `requirements.txt`, no lockfile under `webapp/`. A placeholder
-  manifest asserts a decision that has not been made, and the repository's placeholder
-  tests reject one.
+  manifest asserts a decision that has not been made. `tests/test_placeholders.py` enforces
+  this by asserting the lane's directory contents exactly, so any new file here fails CI.
 - **Do not restructure the repository to accommodate a web app.** No new top-level
   directory, no moving existing lanes, no `src/` extraction, no edit to the root
   `pyproject.toml` to make room for a web app.
@@ -37,10 +33,8 @@ deferred-decision record in [`docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md).
 Only this file and the lane `README.md`, which states the deferred decision. No code, no
 configuration, no assets, no manifests.
 
-## When a framework is chosen
+## Until a framework is chosen
 
-The human who chooses it records the decision in the lane `README.md`, adds the lane's
-own dependency manifest, and adds an explicit `tool.uv.workspace` exclusion to the root
-`pyproject.toml` so a root `uv sync` does not try to resolve the new manifest. Until that
-happens, treat any proposal to "start the frontend" as blocked on a human decision, and
-say so rather than proceeding.
+Treat any proposal to "start the frontend" as **blocked on a human decision**, and say so
+rather than proceeding. What that decision will require — the lane manifest and the root
+`tool.uv.workspace` exclusion — is recorded in [`README.md`](README.md); do not restate it.
