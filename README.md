@@ -59,16 +59,17 @@ The **State** column says how far a lane has got, not how much it matters:
 - **present** — in place for the bootstrap, with nothing further sequenced.
 - **undecided** — a deliberate placeholder: the directory exists, and the decision it waits
   on has not been made. `webapp/` is the only one, and its lane readme records why.
-- **planned** — the directory does not exist yet, and its own lane task creates it.
-  `submission/` is the only one left.
 
-Nothing in this repository pretends an unfinished lane is finished: each lane lands as its
-own reviewed change, and until then the repository contains the structure, the policy, and
-the gates rather than the features. The lanes are sequenced in
-[`specs/2026-10-10-repo-bootstrap-plan.md`](specs/2026-10-10-repo-bootstrap-plan.md). A
-**planned** lane is shown as a plain path rather than a link, because linking to a
-directory that does not exist yet would be a dead link in a judged submission; its lane
-task turns it into a link as it creates the directory.
+`planned` is deliberately absent from this legend: every lane in the bootstrap has now
+landed, so no row is a promise about a directory that does not exist yet. If a future lane
+is added, describe it here rather than reintroducing a state word the table does not use.
+
+Nothing in this repository pretends an unfinished lane is finished: each lane landed as its
+own reviewed change, and the lane notes say plainly which features are still to come. The
+lanes were sequenced in
+[`specs/2026-10-10-repo-bootstrap-plan.md`](specs/2026-10-10-repo-bootstrap-plan.md). Every
+lane name below is a link, because every lane directory now exists — a link to a directory
+that did not exist would be a dead link in a judged submission.
 
 ## Quickstart
 
