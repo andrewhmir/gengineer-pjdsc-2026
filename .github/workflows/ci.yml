@@ -25,7 +25,7 @@ jobs:
       notebooks: ${{ steps.changed.outputs.notebooks }}
       firmware: ${{ steps.changed.outputs.firmware }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # A shallow clone cannot diff against the pull request base.
           fetch-depth: 0
@@ -107,7 +107,7 @@ jobs:
     if: needs.changes.outputs.python == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
@@ -132,7 +132,7 @@ jobs:
     if: needs.changes.outputs.python == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
@@ -155,7 +155,7 @@ jobs:
     if: needs.changes.outputs.notebooks == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
@@ -177,7 +177,7 @@ jobs:
     if: needs.changes.outputs.firmware == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # `find` is used rather than a shell glob so the check is recursive, and
       # `-print0`/`-0` keep paths with spaces intact. firmware/lib/ is vendored
@@ -201,7 +201,7 @@ jobs:
     env:
       GITLEAKS_VERSION: 8.28.0
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # The scan must cover the whole history, not just the head commit.
           fetch-depth: 0
