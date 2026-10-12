@@ -1,7 +1,8 @@
 """Whole-repository acceptance checks that no single lane test owns.
 
-These are the plan's final verification. Each assertion is deliberately falsifiable:
-the lane-map check below replaces a version that could not fail (see its docstring).
+These are the plan's final verification. Every assertion here has been shown to fail when
+the fault it names is injected; the lane-map check below replaces the plan's version,
+which skipped a lane whose row had been deleted (see its docstring).
 """
 
 import json
@@ -34,26 +35,39 @@ def tracked_files(repo_root: Path) -> list[str]:
     return [line for line in result.stdout.splitlines() if line]
 
 
-def readme_lane_map(repo_root: Path) -> dict[str, tuple[str, str]]:
-    """Return {lane: (state, raw_row)} for the README's Repository map table.
+def readme_lane_map(repo_root: Path) -> dict[str, list[tuple[str, str]]]:
+    """Return {lane: [(state, raw_row), ...]} for the README's Repository map table.
 
     Parses the table's *structure* — a first cell naming the lane directory and a third
     cell naming its state — instead of regex-searching for the lane name anywhere in the
-    file. A substring search cannot distinguish the row for `data/` from the row for
-    `notebooks/`, whose Lane cell reads "Data / analysis"; that ambiguity is what made
-    the original version of this check unpinnable.
+    file. A substring search is the wrong tool here: it has no notion of which cell the
+    match landed in.
+
+    The value is a list, not a single tuple, because a duplicate row must be *visible* to
+    the caller. Collapsing duplicates into a dict silently lets a second row for the same
+    lane rewrite the first, so a lane could be documented twice with contradictory states
+    and the row-set comparison would still pass.
+
+    A row is identified by its first cell naming a lane directory, and its state is the
+    third cell. There is deliberately **no minimum cell count that drops the row**: an
+    earlier version required four cells, which silently discarded a three-cell row for a
+    lane rather than failing, so a malformed row was invisible. A lane row too short to
+    carry a state is now returned with the sentinel `<no state cell>`, which fails the
+    legend check loudly instead of being dropped. The lane pattern in the first cell is
+    distinctive enough on its own to keep the other tables in `README.md` (commands,
+    competition facts) out.
     """
-    rows: dict[str, tuple[str, str]] = {}
-    for line in (repo_root / "README.md").read_text(encoding="utf-8").splitlines():
+    rows: dict[str, list[tuple[str, str]]] = {}
+    table = (repo_root / "README.md").read_text(encoding="utf-8")
+    for line in table.splitlines():
         if not line.startswith("|"):
             continue
         cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
-        if len(cells) < 4 or cells[2] in {"State", "---"}:
-            continue
         match = re.search(r"`([a-z_]+)/`", cells[0])
         if match is None:
             continue
-        rows[match.group(1)] = (cells[2], line)
+        state = cells[2] if len(cells) >= 3 else "<no state cell>"
+        rows.setdefault(match.group(1), []).append((state, line))
     return rows
 
 
@@ -148,43 +162,72 @@ def test_tests_agents_md_states_the_marquee_rules(repo_root: Path) -> None:
 
 
 def test_suite_pins_ruff_to_the_pre_commit_rev(repo_root: Path) -> None:
-    """The two cases that must agree, or `ruff format --check` differs locally and in CI."""
+    """The two cases that must agree, or `ruff format --check` differs locally and in CI.
+
+    Both patterns are anchored to the exact line shape they are looking for, and each is
+    required to match exactly once.
+
+    The pyproject pattern is anchored to a dependency line at the dev group's four-space
+    indent. An unanchored search takes the *first* occurrence of the pin anywhere in the
+    file, so prose or a comment that merely mentions the expected version above a
+    genuinely drifted pin satisfies the assertion while the invariant is broken. That is
+    not hypothetical: an earlier revision of this docstring quoted the expected version on
+    its own line and made the test fail against itself, which is how the weakness surfaced.
+
+    The rev pattern anchors to the `ruff-pre-commit` repository URL and treats the
+    explanatory comment between it and `rev:` as optional. Requiring that comment made
+    deleting it, a semantically neutral edit, turn the test red with a misleading
+    "could not locate" message. Both halves of this fix were verified by constructing the
+    decoy comment and the comment-deletion edit and confirming the outcome in each case.
+    """
     pyproject = (repo_root / "pyproject.toml").read_text(encoding="utf-8")
     precommit = (repo_root / ".pre-commit-config.yaml").read_text(encoding="utf-8")
-    pin = re.search(r'"ruff==([0-9.]+)"', pyproject)
-    rev = re.search(r"ruff-pre-commit\s*\n\s*#.*\n\s*rev:\s*v([0-9.]+)", precommit)
-    assert pin and rev, "could not locate the ruff pin and the pre-commit rev"
-    assert pin.group(1) == rev.group(1), (
-        f"ruff is pinned to {pin.group(1)} but the pre-commit rev is v{rev.group(1)}"
-    )
+
+    pins = re.findall(r'^    "ruff==([0-9.]+)",\s*$', pyproject, re.MULTILINE)
+    assert len(pins) == 1, f"expected exactly one ruff pin line in pyproject.toml, got {pins}"
+
+    revs = re.findall(r"ruff-pre-commit\s*\n(?:\s*#.*\n)?\s*rev:\s*v?([0-9.]+)", precommit)
+    assert len(revs) == 1, f"expected exactly one ruff-pre-commit rev, got {revs}"
+
+    assert pins[0] == revs[0], f"ruff is pinned to {pins[0]} but the pre-commit rev is v{revs[0]}"
 
 
 def test_lane_map_agrees_with_the_filesystem(repo_root: Path) -> None:
-    """The lane map must name every documented lane, in both directions.
+    """The lane map must name every documented lane, and the two lane maps must agree.
 
-    An earlier version of this assertion compared `README.md`'s row text against the
-    presence of each lane README:
+    The plan prescribed this body:
 
+        row = re.search(rf"^\\|.*`?{lane}/`?.*$", readme, re.MULTILINE)
+        if not row:
+            continue
         landed = (repo_root / lane / "README.md").is_file()
-        says_planned = "planned" in row
+        says_planned = "planned" in row.group(0).lower()
         assert landed != says_planned
 
-    That was 100% vacuous once the bootstrap finished. Every lane had landed, and the
-    README's legend states `planned` is deliberately absent from the vocabulary, so the
-    right-hand side was `False` for every lane and the left-hand side `True`: the
-    assertion reduced to `True != False` and could not fail. Its other flaw was the row
-    match — a greedy ``^\\|.*`?data/`?.*$`` also matches the *notebooks* row, whose Lane
-    cell reads "Data / analysis".
+    Measured on this tree, that assertion is **green, not vacuous** — it has two live
+    branches (`landed=False, says_planned=False` and `landed=True, says_planned=True`
+    both go red). Its real defect is the ``if not row: continue``: a lane whose row is
+    deleted from the map is skipped entirely, so dropping `submission/` from the table
+    would leave the check green and silent. It also cannot see a duplicate row.
 
-    This version asserts the relationship between the map and the filesystem in both
-    directions, with no conjunct that is trivially true:
+    Two claims made about the original during this task were **wrong and are retracted**:
+    it is not "100% vacuous", and its greedy row regex does **not** cross-match the
+    `notebooks` row — `README.md:48`'s Lane cell is "Data / analysis" with a space, which
+    does not contain the substring "data/", so each of the five patterns matches exactly
+    its own row. Both claims were reasoned about rather than executed; re-run against the
+    file, `data/` matches line 47 only.
 
-    * the map carries exactly one row per documented lane and names no lane that is not
-      documented;
-    * every state word the map uses is one the legend defines (README -> legend);
-    * every lane the root `AGENTS.md` names must exist on disk and must appear in the
-      README map, so a lane added to one document cannot go missing from the other
-      (AGENTS.md <-> README).
+    What this version adds over the plan's body, each falsified by injection:
+
+    * the map carries exactly one row per documented lane, names no undocumented lane, and
+      documents no lane twice (the ``continue`` hole and the duplicate hole, both closed);
+    * every state word the map uses is one the legend defines;
+    * every lane the root `AGENTS.md` names exists on disk and appears in the README map,
+      so a lane added to one document cannot go missing from the other.
+
+    The third point is a **subset** relation, not an equality: `AGENTS.md`'s lane map
+    covers 5 of the 8 README lanes, so it is asserted as "everything the AGENTS map names
+    is also in the README map", not "the two sets are equal".
 
     Lane *existence* is deliberately not re-asserted in the row loop: this function
     already requires `set(rows) == set(LANES)`, so a lane absent from disk would have to
@@ -196,6 +239,11 @@ def test_lane_map_agrees_with_the_filesystem(repo_root: Path) -> None:
         f"missing={sorted(set(LANES) - set(rows))} "
         f"unexpected={sorted(set(rows) - set(LANES))}"
     )
+    duplicated = {lane: len(entries) for lane, entries in rows.items() if len(entries) > 1}
+    assert not duplicated, (
+        f"the README Repository map documents a lane more than once: {duplicated}; "
+        "a duplicate row silently overrides the first and hides a contradiction"
+    )
 
     # README -> disk: a documented lane must be real, and must declare a state the
     # legend defines rather than a word the table has invented.
@@ -206,11 +254,12 @@ def test_lane_map_agrees_with_the_filesystem(repo_root: Path) -> None:
         if line.startswith("- **")
         for word in re.findall(r"\*\*([a-z]+)\*\*", line)
     }
-    for lane, (state, row) in rows.items():
-        assert state in vocabulary, (
-            f"{lane}/ is mapped to state {state!r}, which the legend does not define "
-            f"(legend: {sorted(vocabulary)}); row: {row}"
-        )
+    for lane, entries in rows.items():
+        for state, row in entries:
+            assert state in vocabulary, (
+                f"{lane}/ is mapped to state {state!r}, which the legend does not define "
+                f"(legend: {sorted(vocabulary)}); row: {row}"
+            )
 
     # AGENTS.md <-> README: the root lane map and the human lane map must agree.
     agents_lanes = agents_md_lane_map(repo_root)
@@ -221,6 +270,21 @@ def test_lane_map_agrees_with_the_filesystem(repo_root: Path) -> None:
     assert not undocumented, (
         f"AGENTS.md documents lanes the README Repository map omits: {sorted(undocumented)}"
     )
+
+
+def declared_notebook_reads(notebook: Path) -> list[str]:
+    """Literal `read_csv("...")` targets declared by one notebook's code cells.
+
+    Only string literals are found. A computed path such as
+    `pd.read_csv(Path("../data/samples/x.csv"))` is invisible here, which is why the
+    companion guard below requires *some* notebook to declare a literal read rather than
+    asserting every notebook does.
+    """
+    document = json.loads(notebook.read_text(encoding="utf-8"))
+    source = "\n".join(
+        "".join(cell["source"]) for cell in document["cells"] if cell["cell_type"] == "code"
+    )
+    return re.findall(r'read_csv\(\s*["\']([^"\']+)["\']', source)
 
 
 def test_notebook_relative_paths_resolve_on_disk(repo_root: Path) -> None:
@@ -236,12 +300,7 @@ def test_notebook_relative_paths_resolve_on_disk(repo_root: Path) -> None:
     notebooks = sorted((repo_root / "notebooks").glob("*.ipynb"))
     assert notebooks, "no notebooks were found, so this check is vacuous"
     for notebook in notebooks:
-        document = json.loads(notebook.read_text(encoding="utf-8"))
-        source = "\n".join(
-            "".join(cell["source"]) for cell in document["cells"] if cell["cell_type"] == "code"
-        )
-        declared = re.findall(r'read_csv\(\s*["\']([^"\']+)["\']', source)
-        for relative in declared:
+        for relative in declared_notebook_reads(notebook):
             resolved = (notebook.parent / relative).resolve()
             assert resolved.is_file(), (
                 f"{notebook.name} reads {relative!r}, which resolves to {resolved} "
@@ -255,15 +314,22 @@ def test_the_notebook_fixture_path_is_actually_exercised(repo_root: Path) -> Non
     Without this, a refactor that stopped using `read_csv` (or renamed the fixture) would
     make `test_notebook_relative_paths_resolve_on_disk` iterate zero paths and pass while
     checking nothing — the same shape of vacuity this module exists to eliminate.
+
+    Counted over the whole lane, and the count is asserted per notebook that declares
+    anything. A pooled `list.extend` across notebooks would let one notebook's declaration
+    satisfy the guard while a second notebook contributed zero paths to the resolver —
+    measured, and the reason this reports per-notebook counts rather than one total.
     """
-    declared: list[str] = []
-    for notebook in sorted((repo_root / "notebooks").glob("*.ipynb")):
-        document = json.loads(notebook.read_text(encoding="utf-8"))
-        source = "\n".join(
-            "".join(cell["source"]) for cell in document["cells"] if cell["cell_type"] == "code"
-        )
-        declared.extend(re.findall(r'read_csv\(\s*["\']([^"\']+)["\']', source))
-    assert declared, (
+    counts = {
+        notebook.name: len(declared_notebook_reads(notebook))
+        for notebook in sorted((repo_root / "notebooks").glob("*.ipynb"))
+    }
+    assert any(counts.values()), (
         "no notebook declares a read_csv path, so the notebook path resolver checks "
         "nothing; update this test if the notebook lane changes how it loads fixtures"
+    )
+    silent = sorted(name for name, count in counts.items() if count == 0)
+    assert not silent, (
+        f"these notebooks declare no literal read_csv path and so contribute nothing to "
+        f"the resolver: {silent} (declared per notebook: {counts})"
     )
