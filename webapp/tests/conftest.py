@@ -28,25 +28,29 @@ def respiration(
     *,
     fs: float = FS,
     noise: float = 0.0,
-    jitter: float = 0.0,
+    cv: float = 0.0,
     seed: int = 0,
 ) -> np.ndarray:
-    """A respiratory waveform at ``bpm`` with optional rate jitter and additive noise.
+    """A respiratory waveform at ``bpm`` breaths per minute.
 
-    ``jitter`` is a fraction of the rate: 0.06 is a rate that wanders by about six percent,
-    which is what an unsteady or distressed rhythm looks like to the phase-locking detector.
+    ``cv`` is the coefficient of variation of the breath-to-breath interval: 0 is metronomic,
+    0.4 is a rhythm whose next breath is a coin toss between half and double the last one. This
+    is the variability a distressed or unsteady rhythm shows, and it is what the phase-locking
+    statistic actually measures — a smooth frequency wobble changes the rate without ever
+    letting the phase slip, so it cannot move the statistic at all.
     """
     rng = np.random.default_rng(seed)
     n = int(round(seconds * fs))
     t = np.arange(n) / fs
-    modulation = np.zeros(n)
-    if jitter:
-        modulation = jitter * (
-            0.6 * np.sin(2 * np.pi * 0.03 * t) + 0.4 * np.sin(2 * np.pi * 0.07 * t + 1.1)
-        )
-    instantaneous = (bpm / 60.0) * (1.0 + modulation)
-    phase = 2 * np.pi * np.cumsum(instantaneous) / fs
-    signal = np.sin(phase)
+    mean_interval = 60.0 / bpm
+    onsets = [0.0]
+    while onsets[-1] < seconds:
+        interval = mean_interval
+        if cv:
+            interval *= float(np.exp(rng.normal(0.0, cv) - 0.5 * cv * cv))
+        onsets.append(onsets[-1] + interval)
+    cycles = np.interp(t, np.array(onsets), np.arange(len(onsets)))
+    signal = np.sin(2 * np.pi * cycles)
     if noise:
         signal = signal + rng.normal(0.0, noise, n)
     return signal
