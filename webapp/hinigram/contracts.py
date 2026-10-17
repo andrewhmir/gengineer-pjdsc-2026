@@ -10,11 +10,56 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 #: The three frame sources a station can run from. ``serial`` means real hardware; the chip in
 #: the kiosk header renders this as LIVE/REPLAY/SIM so simulated data never looks live (REQ-103).
 SourceName = Literal["sim", "replay", "serial"]
+
+#: The transmitters the rig defines. The receiver is the fourth node and never a frame source.
+TxName = Literal["tx1", "tx2", "tx3"]
+
+#: The only frame version this parser accepts. A future firmware bumps it, and an old station
+#: must reject the frame rather than mis-read it (design record §18, risk table).
+FRAME_VERSION = 1
+
+
+class Frame(BaseModel):
+    """One CSI frame from the receiver, as JSON Lines.
+
+    ``ch`` is the receiver's own channel count and is recorded, not trusted: ``amp`` and
+    ``phase`` are the subcarrier vectors the detector uses, and they must be non-empty and the
+    same length. An unknown ``v`` is rejected rather than coerced.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    v: int = FRAME_VERSION
+    t: int
+    tx: TxName
+    ch: int
+    seq: int
+    rssi: float
+    amp: list[float]
+    phase: list[float]
+
+    @field_validator("v")
+    @classmethod
+    def _known_version(cls, value: int) -> int:
+        if value != FRAME_VERSION:
+            raise ValueError(f"unsupported frame version {value}")
+        return value
+
+    @field_validator("amp")
+    @classmethod
+    def _amp_matches_phase(cls, value: list[float], info: object) -> list[float]:
+        data = getattr(info, "data", {})
+        phase = data.get("phase")
+        if not value:
+            raise ValueError("amp must not be empty")
+        if phase is not None and len(phase) != len(value):
+            raise ValueError("amp and phase must describe the same subcarriers")
+        return value
 
 
 class Thresholds(BaseModel):

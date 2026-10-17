@@ -14,6 +14,7 @@ from fastapi.testclient import TestClient
 
 from hinigram.app import create_app
 from hinigram.config import Settings
+from hinigram.contracts import Frame
 
 
 class FakeClock:
@@ -50,3 +51,28 @@ def client(settings_factory: Callable[..., Settings]) -> Iterator[TestClient]:
     """An HTTP client over the real app, with the lifespan entered."""
     with TestClient(create_app(settings_factory())) as test_client:
         yield test_client
+
+
+@pytest.fixture
+def make_frame() -> Callable[..., Frame]:
+    """Build a valid CSI frame; tests override only the fields they care about."""
+
+    def factory(
+        t: int,
+        tx: str = "tx1",
+        phase: list[float] | None = None,
+        amp: list[float] | None = None,
+        ch: int = 3,
+    ) -> Frame:
+        return Frame(
+            v=1,
+            t=t,
+            tx=tx,  # type: ignore[arg-type]
+            ch=ch,
+            seq=0,
+            rssi=-42.0,
+            amp=amp if amp is not None else [1.0] * ch,
+            phase=phase if phase is not None else [0.0] * ch,
+        )
+
+    return factory
