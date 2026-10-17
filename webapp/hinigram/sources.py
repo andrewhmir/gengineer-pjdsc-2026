@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import gzip
 import json
+import logging
 import math
 import threading
 import time
@@ -25,6 +26,10 @@ from hinigram.clock import monotonic_ms
 from hinigram.config import PACKAGE_DIR, Settings
 from hinigram.contracts import Frame
 from hinigram.pipeline.frames import FrameStore, parse_frame_line
+
+#: A source thread has nowhere to raise: its exception would be swallowed by the thread.
+#: Every loop body therefore logs and stops, so a dead link is visible in the log.
+logger = logging.getLogger(__name__)
 
 #: Where the committed scenario definitions live.
 SCENARIOS_PATH = PACKAGE_DIR / "fixtures" / "scenarios.json"
@@ -307,7 +312,11 @@ class SimulatorSource:
 
     def _run(self) -> None:
         while not self._stop.is_set():
-            self.emit_once()
+            try:
+                self.emit_once()
+            except Exception:  # noqa: BLE001 - a thread must not die silently
+                logger.exception("the simulator source stopped after an unexpected error")
+                return
             time.sleep(EMIT_INTERVAL_S)
 
 
@@ -356,18 +365,25 @@ class ReplaySource:
 
     def _run(self) -> None:
         while not self._stop.is_set():
-            with self._lock:
-                store = self._store
-                if store is not None and self._frames:
-                    origin = self._frames[0].t
-                    now_ms = self.clock()
-                    while self._index < len(self._frames):
-                        frame = self._frames[self._index]
-                        if origin + (now_ms - self._epoch_ms) < frame.t:
-                            break
-                        store.push(frame)
-                        self._index += 1
+            try:
+                self._emit_once()
+            except Exception:  # noqa: BLE001 - a thread must not die silently
+                logger.exception("the replay source stopped after an unexpected error")
+                return
             time.sleep(EMIT_INTERVAL_S)
+
+    def _emit_once(self) -> None:
+        with self._lock:
+            store = self._store
+            if store is not None and self._frames:
+                origin = self._frames[0].t
+                now_ms = self.clock()
+                while self._index < len(self._frames):
+                    frame = self._frames[self._index]
+                    if origin + (now_ms - self._epoch_ms) < frame.t:
+                        break
+                    store.push(frame)
+                    self._index += 1
 
 
 @dataclass
@@ -429,21 +445,29 @@ class SerialSource:
 
     def _run(self) -> None:
         while not self._stop.is_set():
-            if self.stream is None:
-                try:
-                    import serial  # imported lazily: the simulator must run without pyserial
-
-                    self.stream = serial.Serial(self.port, self.baudrate, timeout=0.5)
-                except ImportError:
-                    self.closed = True
-                    return
-                except Exception:
-                    time.sleep(1.0)
-                    continue
-            for frame in self.read_frames():
-                if self._store is not None:
-                    self._store.push(frame)
+            try:
+                self._read_once()
+            except Exception:  # noqa: BLE001 - a thread must not die silently
+                logger.exception("the serial source stopped after an unexpected error")
+                return
             time.sleep(0.01)
+
+    def _read_once(self) -> None:
+        if self.stream is None:
+            try:
+                import serial  # imported lazily: the simulator must run without pyserial
+
+                self.stream = serial.Serial(self.port, self.baudrate, timeout=0.5)
+            except ImportError:
+                self.closed = True
+                return
+            except Exception:
+                # The port is not there yet (or is busy); try again on the next pass.
+                time.sleep(1.0)
+                return
+        for frame in self.read_frames():
+            if self._store is not None:
+                self._store.push(frame)
 
 
 def build_source(settings: Settings, clock: Callable[[], int] = monotonic_ms) -> Source:
