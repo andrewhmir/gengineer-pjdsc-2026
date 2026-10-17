@@ -168,3 +168,54 @@ class Result(BaseModel):
     metrics: list[Metric]
     details: StaffDetails
     thresholds: Thresholds
+
+
+class LiveMetrics(BaseModel):
+    """What the panel may show *while* measuring: a rate, a level, a breath count."""
+
+    rr_bpm: float | None
+    amp_db: float | None
+    breaths: int
+
+
+class SessionState(BaseModel):
+    """The whole station, as one payload. The page is a renderer for this object.
+
+    Nothing here identifies a person: the id is random, and every other field describes the
+    measurement or the machine.
+    """
+
+    id: str
+    state: StationState
+    source: SourceName
+    scenario: str | None = None
+    started_ms: int | None
+    elapsed_ms: int
+    duration_ms: int
+    presence: bool
+    quality: Literal["ok", "low"]
+    motion: bool
+    stage_label: str
+    chip: Chip | None
+    steps: list[StepState]
+    live: LiveMetrics | None
+    result: Result | None
+
+
+class Trace(BaseModel):
+    """The measured series behind a finished result, decimated for transport.
+
+    ``amp`` is the bandpassed respiratory signal in radians of phase; ``phi_breath`` is its
+    analytic phase. The staff fold draws the first and quotes the phase-locking value.
+    """
+
+    t: list[float]
+    amp: list[float]
+    phi_breath: list[float]
+    plv: float
+    rr_bpm: float | None
+    amp_db: float
+    locked: bool
+    winding: float
+    no_breath: bool
+    tx_used: str | None

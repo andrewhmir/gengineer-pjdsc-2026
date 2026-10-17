@@ -251,13 +251,15 @@ def flat_seconds(x: np.ndarray, fs: float, floor_ratio: float = 0.25) -> float:
 
 
 def decimate(t: np.ndarray, x: np.ndarray, hz: float = 10.0) -> tuple[np.ndarray, np.ndarray]:
-    """Thin a series to roughly ``hz`` for transport, keeping the first sample."""
+    """Thin a series to roughly ``hz`` for transport, keeping the first sample.
+
+    ``t`` is in seconds, which is the unit the trace contract publishes.
+    """
     t_values = np.asarray(t, dtype=np.float64)
     x_values = np.asarray(x, dtype=np.float64)
     if t_values.shape[0] < 2:
         return t_values.copy(), x_values.copy()
-    deltas = np.diff(t_values)
-    median_dt_s = float(np.median(deltas)) / 1000.0
+    median_dt_s = float(np.median(np.diff(t_values)))
     if median_dt_s <= 0:
         return t_values.copy(), x_values.copy()
     step = max(1, int(round(1.0 / (hz * median_dt_s))))

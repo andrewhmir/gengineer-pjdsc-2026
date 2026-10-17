@@ -109,7 +109,7 @@ def test_flat_seconds_measures_a_breath_pause(fake_series: Callable[..., np.ndar
 
 
 def test_decimate_keeps_every_tenth_sample_of_a_100_hz_stream() -> None:
-    t = np.arange(0.0, 30.0, 1 / FS) * 1000.0
+    t = np.arange(0.0, 30.0, 1 / FS)  # seconds, the unit the trace publishes
     x = np.zeros_like(t)
     decimated_t, decimated_x = dsp.decimate(t, x, hz=10.0)
     assert decimated_t.shape == decimated_x.shape

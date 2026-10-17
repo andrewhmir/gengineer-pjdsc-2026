@@ -8,11 +8,13 @@ rather than by guessing.
 from __future__ import annotations
 
 from collections.abc import Callable
+from functools import cache
 from pathlib import Path
 
 import pytest
 
 from hinigram.config import PACKAGE_DIR, Settings
+from hinigram.contracts import Frame
 from hinigram.pipeline.analyze import Analysis, analyze_window
 from hinigram.pipeline.frames import FrameStore
 from hinigram.pipeline.rules import decide
@@ -41,10 +43,10 @@ def test_the_scenario_set_covers_every_outcome() -> None:
 
 def test_frames_are_deterministic_for_a_seed() -> None:
     scenario = load_scenarios()["regular"]
-    first = simulate_frames(scenario, start_ms=0, n=3301)
-    second = simulate_frames(scenario, start_ms=0, n=3301)
+    first = simulate_frames(scenario, start_ms=0, n=501)
+    second = simulate_frames(scenario, start_ms=0, n=501)
     assert [frame.phase for frame in first] == [frame.phase for frame in second]
-    assert simulate_frames(scenario, start_ms=0, n=3301, seed=7)[900].phase != first[900].phase
+    assert simulate_frames(scenario, start_ms=0, n=501, seed=7)[90].phase != first[90].phase
 
 
 def test_frames_cover_three_transmitters_and_three_subcarriers() -> None:
@@ -146,8 +148,14 @@ def test_a_scenario_defaults_are_the_documented_ones() -> None:
 # --- the committed replay fixture -------------------------------------------------------
 
 
+@cache
+def replay_frames() -> tuple[Frame, ...]:
+    """Parse the committed fixture once; three tests read it and it is nearly ten thousand lines."""
+    return tuple(iter_replay_fixture())
+
+
 def test_the_replay_fixture_is_a_full_session() -> None:
-    frames = iter_replay_fixture()
+    frames = replay_frames()
     assert len(frames) > 9000
     assert {"tx1", "tx2", "tx3"} == {frame.tx for frame in frames}
     assert all(later.t >= earlier.t for earlier, later in zip(frames, frames[1:], strict=False))
@@ -160,7 +168,7 @@ def test_the_replay_fixture_is_small_enough_to_commit() -> None:
 
 def test_the_replay_fixture_reaches_a_regular_result() -> None:
     store = FrameStore()
-    for frame in iter_replay_fixture():
+    for frame in replay_frames():
         store.push(frame)
     thresholds = Settings().thresholds()
     analysis = analyze_window(store.window(3000.0, 33000.0), thresholds)

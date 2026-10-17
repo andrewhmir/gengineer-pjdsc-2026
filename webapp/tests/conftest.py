@@ -7,6 +7,7 @@ seconds, so no test waits on wall-clock time or on a background thread for real 
 from __future__ import annotations
 
 from collections.abc import Callable, Iterator
+from functools import cache
 from pathlib import Path
 
 import numpy as np
@@ -19,9 +20,25 @@ from hinigram.contracts import Frame, Thresholds
 from hinigram.pipeline.analyze import Analysis, analyze_window
 from hinigram.pipeline.frames import FrameStore, Window
 from hinigram.sources import load_scenarios, simulate_frames
+from tests.helpers import FakeClock
 
 #: Sample rate every synthetic signal in the suite is generated at.
 FS = 100.0
+
+
+@cache
+def cached_frames(scenario_name: str, at_ms: int, n: int) -> tuple[Frame, ...]:
+    """A scripted session, generated once and reused.
+
+    The generator is deterministic, so caching it changes no test's meaning and keeps the lane
+    suite inside its fifteen-second budget: a station fixture needs a whole session, and every
+    test that builds one would otherwise regenerate ten thousand frames.
+
+    The cache is cleared between runs by process exit; a stale entry cannot exist because the
+    key carries the scenario name, the session start, and the frame count.
+    """
+    scenario = load_scenarios()[scenario_name]
+    return tuple(simulate_frames(scenario, at_ms, n))
 
 
 def respiration(
@@ -56,20 +73,6 @@ def respiration(
     if noise:
         signal = signal + rng.normal(0.0, noise, n)
     return signal
-
-
-class FakeClock:
-    """A monotonic clock the test moves by hand."""
-
-    def __init__(self, start_ms: int = 1_000_000) -> None:
-        self._now = start_ms
-
-    def now(self) -> int:
-        return self._now
-
-    def advance(self, ms: int) -> int:
-        self._now += ms
-        return self._now
 
 
 @pytest.fixture
@@ -207,10 +210,9 @@ def analyse_scenario() -> Callable[[str], Analysis]:
     """
 
     def factory(name: str, settle_s: float = 3.0, capture_s: float = 30.0) -> Analysis:
-        scenario = load_scenarios()[name]
         store = FrameStore()
         total_ms = int((settle_s + capture_s) * FS) + 1
-        for frame in simulate_frames(scenario, 0, total_ms):
+        for frame in cached_frames(name, 0, total_ms):
             store.push(frame)
         windows = store.window(settle_s * 1000.0, (settle_s + capture_s) * 1000.0)
         result = analyze_window(windows, Settings().thresholds())
@@ -218,6 +220,69 @@ def analyse_scenario() -> Callable[[str], Analysis]:
         return result
 
     return factory
+
+
+class ScriptedSource:
+    """A source that dumps a whole session into the store the moment Start is pressed.
+
+    This is the test stand-in for the simulator thread: it obeys the same contract (it is told
+    when the session began and fills the store), but it fills it at once so the test can move a
+    fake clock instead of sleeping for 33 seconds.
+    """
+
+    name = "sim"
+
+    def __init__(self, scenario: str) -> None:
+        self.scenario = scenario
+        self.store: FrameStore | None = None
+        self.started_at: int | None = None
+
+    def start(self, store: FrameStore) -> None:
+        self.store = store
+
+    def stop(self) -> None:
+        return None
+
+    def on_session_start(self, at_ms: int) -> None:
+        self.started_at = at_ms
+        assert self.store is not None
+        total = int(round((33.0 + 2.0) * FS))
+        for frame in cached_frames(self.scenario, at_ms, total):
+            self.store.push(frame)
+
+
+@pytest.fixture
+def clock() -> FakeClock:
+    return FakeClock()
+
+
+@pytest.fixture
+def make_station(
+    settings_factory: Callable[..., Settings], clock: FakeClock
+) -> Callable[..., object]:
+    """A station wired to a scripted source and a hand-moved clock."""
+
+    def factory(scenario: str = "regular", **overrides: object) -> object:
+        from hinigram.station import Station
+
+        settings = settings_factory(**overrides)
+        store = FrameStore()
+        source = ScriptedSource(scenario)
+        source.start(store)
+        station = Station(store, settings, clock=clock.now, source=source)
+        return station
+
+    return factory
+
+
+@pytest.fixture
+def station(make_station: Callable[..., object]) -> object:
+    return make_station()
+
+
+@pytest.fixture
+def empty_station(make_station: Callable[..., object]) -> object:
+    return make_station(scenario="absent")
 
 
 @pytest.fixture
