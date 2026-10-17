@@ -138,6 +138,8 @@ class Station:
             # The previous person's frames must not be in the buffers this session reads.
             self.store.reset()
             if self.source is not None:
+                if scenario:
+                    self.source.set_scenario(scenario)
                 self.source.on_session_start(now)
 
     def stop(self) -> None:

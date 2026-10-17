@@ -20,6 +20,7 @@ from hinigram.contracts import Frame, Thresholds
 from hinigram.pipeline.analyze import Analysis, analyze_window
 from hinigram.pipeline.frames import FrameStore, Window
 from hinigram.sources import load_scenarios, simulate_frames
+from hinigram.station import Station
 from tests.helpers import FakeClock
 
 #: Sample rate every synthetic signal in the suite is generated at.
@@ -91,9 +92,11 @@ def settings_factory(tmp_path: Path) -> Callable[..., Settings]:
 
 
 @pytest.fixture
-def client(settings_factory: Callable[..., Settings]) -> Iterator[TestClient]:
-    """An HTTP client over the real app, with the lifespan entered."""
-    with TestClient(create_app(settings_factory())) as test_client:
+def client(station: Station) -> Iterator[TestClient]:
+    """An HTTP client over the real app, wired to the scripted station and the fake clock."""
+    with TestClient(
+        create_app(station.settings, station=station, clock=station.clock)
+    ) as test_client:
         yield test_client
 
 
@@ -249,6 +252,9 @@ class ScriptedSource:
         total = int(round((33.0 + 2.0) * FS))
         for frame in cached_frames(self.scenario, at_ms, total):
             self.store.push(frame)
+
+    def set_scenario(self, name: str) -> None:
+        self.scenario = name
 
 
 @pytest.fixture

@@ -63,6 +63,15 @@ def test_best_transmitter_prefers_the_stronger_stream(
     assert series.shape == (windows["tx1"].t.shape[0],)
 
 
+def test_band_power_ranks_the_transmitters_by_signal_strength(
+    fake_window: Callable[..., Window],
+) -> None:
+    """The fraction saturates near one; the amount of modulation is what ranks nodes."""
+    strong = dsp.band_power(dsp.first_component(fake_window(gain=0.35).phase), FS)
+    weak = dsp.band_power(dsp.first_component(fake_window(gain=0.05).phase), FS)
+    assert strong > 10 * weak
+
+
 def test_best_transmitter_needs_enough_samples(fake_window: Callable[..., Window]) -> None:
     assert dsp.best_transmitter({"tx1": fake_window(gain=0.35, seconds=1.0)}) is None
 

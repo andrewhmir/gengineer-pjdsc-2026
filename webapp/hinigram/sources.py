@@ -198,6 +198,8 @@ class Source(Protocol):
 
     def on_session_start(self, at_ms: int) -> None: ...
 
+    def set_scenario(self, name: str) -> None: ...
+
 
 @dataclass
 class SimulatorSource:
@@ -235,6 +237,16 @@ class SimulatorSource:
         with self._lock:
             self._epoch_ms = at_ms
             self._index = 0
+            self._buffer = []
+            self._buffer_seconds = 0.0
+
+    def set_scenario(self, name: str) -> None:
+        """Play a different script from the next session: the demonstration's only control."""
+        scenarios = load_scenarios()
+        if name not in scenarios:
+            raise ValueError(f"unknown scenario {name!r}; choose one of {sorted(scenarios)}")
+        with self._lock:
+            self.scenario = scenarios[name]
             self._buffer = []
             self._buffer_seconds = 0.0
 
@@ -305,6 +317,10 @@ class ReplaySource:
         """How many fixture frames this session has already emitted."""
         return self._index
 
+    def set_scenario(self, name: str) -> None:
+        """A recorded session has no script to choose; the request is ignored."""
+        return None
+
     def _run(self) -> None:
         while not self._stop.is_set():
             with self._lock:
@@ -350,6 +366,10 @@ class SerialSource:
 
     def on_session_start(self, at_ms: int) -> None:
         """A real receiver has no script to restart; the frames are whatever they are."""
+
+    def set_scenario(self, name: str) -> None:
+        """A real receiver has no script to choose either."""
+        return None
 
     def read_frames(self, store: FrameStore | None = None, limit: int = 1000) -> list[Frame]:
         """Read every complete line currently available from ``stream``.
