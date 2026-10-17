@@ -1,81 +1,111 @@
-# `webapp/` — deferred decision
+# `webapp/` — Hinigram screening station
 
-This lane is the user-facing half of the entry: the thing a health worker or a judge
-actually looks at, and the destination for the readings collected by the CircuitPython
-sensor node in [`firmware/`](../firmware/README.md).
+**Decision (2026-10-17): FastAPI + Jinja2 + vanilla JavaScript on canvas. One process, no Node
+toolchain, no build step, no network at run time.** A human made this decision; the reasoning and
+the rejected alternatives are in
+[`../specs/2026-10-17-webapp-design.md`](../specs/2026-10-17-webapp-design.md) (§3). This lane is
+no longer a placeholder: it is the screening station a person stands in front of.
 
-**No framework has been chosen, and no framework decision has been made.** The lane is a
-deliberate placeholder. It exists so the lane is discoverable and so the absence of a
-decision is explicit and visible, rather than something a reader has to infer from an
-empty directory or an agent discovers by inventing one.
+The station asks one question per person. Someone steps onto the marked spot, presses **Start**,
+stands still for thirty seconds, and reads one of three outcomes — *breathing looks regular*,
+*irregular breathing — speak to the nurse*, or *reading not clear — try again* — with the
+breathing rate behind it. Nothing is measured before Start, and nothing is stored.
 
-The decision has not been made because it cannot be made yet: the choice follows from the
-competition problem statement, and the problem is not fixed. Committing to a framework
-now would be committing to an answer before the question is known, and it would be paid
-for later — in a rewrite, or in a stack that cannot be reproduced by a judge.
+## Quickstart
 
-Until a human makes the decision, this lane contains exactly two files: this one and the
-lane's operative rules in [`AGENTS.md`](AGENTS.md).
+Requirements: [`uv`](https://docs.astral.sh/uv/) and Git, the same two the repository root needs.
+No hardware: the station runs from a simulator.
 
-## Candidate directions
+```console
+cd webapp
+uv sync
+uv run hinigram
+```
 
-These are the directions to evaluate **once the problem is fixed**. They are options, not
-candidates competing for a default, and nothing here is a shortlist that the first line
-of code may assume.
+That serves `http://127.0.0.1:8765`. Press **Start** and the station runs a full 33-second session
+against the simulator: 3 s settle, 30 s capture, a result, then back to idle after 20 s or on
+**Done**.
 
-- **A served dashboard.** A local server renders charts and tables from the analysis
-  outputs, so a judge can re-run a live view rather than read static numbers.
-- **A static report page.** Pre-rendered HTML, or a document generated from the
-  notebooks, that states the findings and needs no server at all.
-- **An API.** A small service exposing the processed readings over HTTP, with the
-  presentation built separately against it.
+Commands:
 
-A combination is possible and expected — a static page plus a served API is a common
-shape for this kind of entry. The direction is chosen after the problem statement, not
-before it.
+| Command | Purpose |
+|---|---|
+| `cd webapp && uv sync` | Create or update the lane's `.venv` from `uv.lock`. |
+| `cd webapp && uv run hinigram` | Serve the station on `127.0.0.1:8765` from the simulator. |
+| `cd webapp && uv run hinigram --source replay` | Serve from the committed synthetic replay fixture. |
+| `cd webapp && uv run hinigram --source serial --serial-port COM5` | Serve real frames from the receiver node. |
+| `cd webapp && uv run pytest` | The lane suite: offline, deterministic, under 15 s. |
+| `cd webapp && uv run ruff check .` | Lint. |
+| `cd webapp && uv run mypy` | Type-check the package. |
 
-## How the direction will be chosen
+The local gate before a push mirrors the root one:
 
-**Judge reproducibility comes first.** The rubric scores *Functional Execution and
-Reproducibility*, and an entry a judge cannot run on a clean machine scores nothing on
-that axis no matter how good it looks. The criteria, in priority order:
+```console
+uv run ruff format --check .
+uv run ruff check .
+uv run mypy
+uv run pytest
+```
 
-1. **Judge reproducibility.** Does it run from a clean clone, on a machine with only the
-   documented prerequisites, with no manual setup and no network access at run time? If
-   two directions are otherwise equal, this one decides.
-2. **Fit to the problem.** Does it make the specific findings the problem asks for
-   legible, rather than presenting generic charts that could belong to any dataset?
-3. **Reproducibility of the numbers.** Does the view read from committed, reproducible
-   analysis outputs, rather than from numbers typed into a template by hand?
-4. **Audience.** Is it usable by the people the problem names — a health worker, a
-   decision-maker, a judge — without a developer sitting beside them?
-5. **Maintenance cost for the remaining schedule.** How much framework-specific work does
-   it commit the team to, and can the team finish and document it in the time left?
-6. **Dependency cost.** How many dependencies does it add, and how much of the
-   *Dependencies and Data Management* rubric criterion does that put at risk?
+## Demonstrating the three outcomes
 
-## When a framework is chosen
+The simulator plays one scripted scenario per session. Choose it with the `scenario` query
+parameter, or set the default with `--scenario`:
 
-A human makes the decision and records it here, at the top of this file, as a dated
-decision. The repository changes at that point, in that same change:
+| Scenario | What the station shows |
+|---|---|
+| `regular` | Breathing looks regular · 15 br/min, steady |
+| `watch` | Breathing looks regular · 22 br/min, worth a mention to staff |
+| `tachypnea` | Irregular breathing · 26.4 br/min, flagged |
+| `unsteady` | Irregular breathing · 16 br/min, unsteady rhythm |
+| `apnea` | Irregular breathing · a breath pause of ten seconds or more |
+| `motion` | Reading not clear · movement during the capture |
+| `absent` | Settle finds no one breathing and returns to idle |
 
-- this lane gains its **own dependency manifest** (the framework's own file — a
-  `pyproject.toml` or a `package.json`), and
-- the root [`pyproject.toml`](../pyproject.toml) gains an explicit `tool.uv.workspace`
-  exclusion, so a `uv sync` at the repository root does not try to resolve the new
-  manifest as part of the root project.
+Open `http://127.0.0.1:8765/?scenario=tachypnea`, press Start, and the station produces a flagged
+result after the capture. The parameter only changes what the simulator emits; it is ignored on
+the replay and serial sources, and it never appears on the patient screen.
 
-Neither exists today, and **[`AGENTS.md`](AGENTS.md) forbids creating either in
-advance**. A placeholder manifest would assert a decision that has not been made.
-`tests/test_placeholders.py` asserts this lane's directory contents exactly, so the
-manifest half of that promise is enforced by CI rather than by convention — and a future
-reader can tell the difference between "not decided yet" and "forgotten".
+## What is deliberately absent
 
-## Where to go next
+This build is the kiosk. The staff surfaces — the backend health graph, the recent-sessions table,
+the phase-space torus, and the method page — are specified in the design record but not
+implemented here. There is no database either: the station stores nothing at all, which is the
+strongest reading of the privacy rule.
 
-- **Working in this lane** — the operative rules, including what must not be done here:
-  [`AGENTS.md`](AGENTS.md). Read it before writing anything under `webapp/`.
-- **Why this lane exists in this shape** — the deferred-decision record and the reasoning
-  about a single root manifest: [`docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md).
-- **Before proposing any web work** — the repository-wide rules and lane map:
-  [`AGENTS.md`](../AGENTS.md) at the root.
+## How it measures
+
+Each session is one window of CSI phase from the receiver. The station keeps about forty
+seconds of frames per transmitter and picks the one with the strongest respiratory-band power —
+the node nearest the person; bandpasses 0.2–0.5 Hz, unwraps the phase, and reduces the
+subcarriers to one series; estimates the rate from the slope of the breath phase and the rhythm
+from a phase-locking value against an oscillator locked to that window's own rate; then applies
+the published rule table and refuses to publish a number when the signal is too weak, too short,
+too noisy, or interrupted.
+
+Two measurements depart from the design record's wording, and both are argued in
+[`../specs/2026-10-17-webapp-kiosk-plan.md`](../specs/2026-10-17-webapp-kiosk-plan.md) (§*Known
+deviations*): the phase-locking value measures phase diffusion rather than filter lag, because a
+driven oscillator reads about 0.9 for any input, and the rate comes from the phase slope rather
+than a spectral peak, because an irregular rhythm pulls a peak estimate low.
+
+## Honest limits
+
+- The detector is a **research prototype**. Its thresholds are prototype values configured in
+  `hinigram/config.py`, not clinical ones, and it has not been validated against a person.
+- The station has been exercised against the simulator and the replay fixture. The serial source
+  is written and unit-tested with a fake stream, but **no receiver firmware exists yet**, so no
+  real CSI frame has ever reached this code.
+- No evaluation artifact exists, so the station makes no accuracy claim. When one is generated, it
+  belongs on the method page with the rest of the numbers.
+- There is no authentication. The server binds loopback precisely because it is a single-operator
+  local prototype; a non-loopback `--host` prints a warning and asks you to think again.
+
+## Working in this lane
+
+The operative rules — module boundaries, what must not be added, and how patient copy is
+tested — are in [`AGENTS.md`](AGENTS.md). The design record is
+[`../specs/2026-10-17-webapp-design.md`](../specs/2026-10-17-webapp-design.md); the build plan it
+came from is [`../specs/2026-10-17-webapp-kiosk-plan.md`](../specs/2026-10-17-webapp-kiosk-plan.md).
+Repository-wide rules and the lane map are in [`../AGENTS.md`](../AGENTS.md), and the reasoning
+about lane boundaries is in [`../docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md).

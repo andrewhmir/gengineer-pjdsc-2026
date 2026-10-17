@@ -1,40 +1,66 @@
 # AGENTS.md — webapp lane
 
-Scope: everything under `webapp/`. The closest `AGENTS.md` wins, so this file overrides
-the root [`AGENTS.md`](../AGENTS.md) for these paths; the root file's repository-wide
-rules still apply.
+Scope: everything under `webapp/`. The closest `AGENTS.md` wins, so this file overrides the root
+[`AGENTS.md`](../AGENTS.md) for these paths; the root file's repository-wide rules still apply.
 
-## No framework has been chosen
+## The framework is chosen
 
-**No framework has been chosen, and no framework decision has been made.** This lane is a
-deliberate placeholder, not started work. The decision record, the candidate directions,
-and the criteria for choosing all live in [`README.md`](README.md) — read that before
-proposing any web work, and do not restate it here.
+**FastAPI + Jinja2 + vanilla JavaScript on canvas, one process, no Node toolchain.** The decision,
+its date, and the alternatives it rejected are recorded in
+[`../specs/2026-10-17-webapp-design.md`](../specs/2026-10-17-webapp-design.md); the lane `README.md`
+carries the dated summary. Do not re-litigate it in code review, and do not introduce a second
+runtime to "modernise" the client.
 
 ## Hard rules
 
-- **Do not scaffold a framework.** No project generator of any kind — no `npm create`, no
-  `django-admin startproject`, no `uv init`, no starter template. A scaffold is a
-  framework decision made by an agent, which is exactly what must not happen.
-- **Do not add dependencies**, and do not add a dependency manifest: no `package.json`,
-  no `pyproject.toml`, no `requirements.txt`, no lockfile under `webapp/`. A placeholder
-  manifest asserts a decision that has not been made. `tests/test_placeholders.py` enforces
-  this by asserting the lane's directory contents exactly, so any new file here fails CI.
-- **Do not restructure the repository to accommodate a web app.** No new top-level
-  directory, no moving existing lanes, no `src/` extraction, no edit to the root
-  `pyproject.toml` to make room for a web app.
-- **Do not pick a framework "just to have something running"**, and never present a
-  starter template as though the project had chosen it.
-- **Do not commit a build artifact, a `node_modules/` tree, or an environment file.**
-  `.env` is prohibited repository-wide; use `.env.example` for placeholder keys.
+- **No Node toolchain, no build step, no bundler.** No `package.json`, no `node_modules/`, no
+  transpiler, no CDN import. The browser loads the files in `hinigram/static/` exactly as written.
+  Judge reproducibility outranks developer convenience (design record, D-1).
+- **Nothing is measured before an explicit Start,** and nothing about a person is stored. No
+  identifiers, no images, no camera, no audio, no session table. Session ids are random.
+- **This lane owns its manifest and lockfile.** `pyproject.toml` and `uv.lock` live here, and the
+  root `pyproject.toml` excludes the lane from its `tool.uv.workspace`. A root `uv sync` must not
+  resolve this project.
+- **Business rules live in Python, not JavaScript.** The client renders server-supplied copy and
+  numbers; it never decides an outcome, formats a clinical value, or invents a waveform. Patient
+  copy, thresholds, and the three outcomes live in `hinigram/pipeline/rules.py` and are tested
+  there.
+- **`pipeline/` and `station.py` import no FastAPI.** `app.py` imports them, never the reverse, so
+  the detector and the state machine stay unit-testable without an HTTP client.
+- **Patient surface accessibility is a requirement, not polish.** Body copy is at least 16 px,
+  primary actions at least 56 px tall, status is never encoded by colour alone, and motion stops
+  under `prefers-reduced-motion`.
+- **One place for colour.** Every colour is a token in `hinigram/static/css/app.css`; templates and
+  canvas code read tokens, they do not carry hex literals.
+- **Tests run offline, with no hardware, deterministically.** Clocks are injected; no `time.sleep`
+  in a test that could be a fake clock.
+- **No secrets and no `.env`.** `.env` is prohibited repository-wide; committed fixtures are
+  synthetic and labelled as such.
+- **`../specs/` is frozen.** It is the record of what was decided; a change to the design is a new
+  record, not an edit.
 
-## What this lane may contain today
+## Commands
 
-Only this file and the lane `README.md`, which states the deferred decision. No code, no
-configuration, no assets, no manifests.
+    cd webapp && uv sync                     # environment from uv.lock
+    cd webapp && uv run hinigram             # serve http://127.0.0.1:8765 (simulator)
+    cd webapp && uv run pytest               # lane suite: offline, deterministic, < 15 s
+    cd webapp && uv run ruff format .        # format
+    cd webapp && uv run ruff check .         # lint
+    cd webapp && uv run mypy                 # types
 
-## Until a framework is chosen
+The four gates above mirror the root repository gate and the `webapp` CI job.
 
-Treat any proposal to "start the frontend" as **blocked on a human decision**, and say so
-rather than proceeding. What that decision will require — the lane manifest and the root
-`tool.uv.workspace` exclusion — is recorded in [`README.md`](README.md); do not restate it.
+## Layout
+
+`hinigram/pipeline/` is the signal path (frames → dsp → hopf → analyze → rules); `station.py` is
+the session state machine; `sources.py` produces frames (simulator, replay, serial); `app.py` is
+the HTTP shell; `templates/` and `static/` are the browser surface. Keep each file one
+responsibility — a module that grows a second one is a module to split, not a module to document.
+
+## Where to go next
+
+- What the station does and how to run it: [`README.md`](README.md).
+- Why it is shaped this way, including the deferred staff surfaces:
+  [`../specs/2026-10-17-webapp-design.md`](../specs/2026-10-17-webapp-design.md).
+- How it was built, task by task:
+  [`../specs/2026-10-17-webapp-kiosk-plan.md`](../specs/2026-10-17-webapp-kiosk-plan.md).

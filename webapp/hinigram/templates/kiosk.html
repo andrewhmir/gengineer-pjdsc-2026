@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<main class="kiosk">
+  <header class="top">
+    <div class="brand">Hinigram <span>/ Screening station</span></div>
+    <div class="right">
+      <span class="health"><span class="dot" id="health-dot"></span><span id="health-word">Checking&hellip;</span></span>
+      <span id="source-chip" class="source" title="data source">{{ source_token }}</span>
+      <time id="clock" class="clock">--:--:--</time>
+    </div>
+  </header>
+
+  <section class="wrap">
+    <div class="card stage">
+      <div class="tag" id="stage-tag">No one detected</div>
+      <canvas id="stage" aria-label="Diagram of the station: a marked spot, three transmitters, and a receiver"></canvas>
+      <p class="note">The figure is an abstract guide, not a camera image. Nothing is measured until you press Start.</p>
+    </div>
+
+    <div class="card panel" id="panel" aria-live="polite">
+      <p class="loading">Starting the station&hellip;</p>
+    </div>
+  </section>
+
+  <p class="disc"><b>Research prototype.</b> This screening checks your breathing rhythm. It is not a diagnosis and it does not replace a nurse or doctor. Ask staff if you have questions.</p>
+</main>
+
+<script src="/static/js/station.js"></script>
+<script src="/static/js/wave.js"></script>
+<script src="/static/js/app.js"></script>
+{% endblock %}

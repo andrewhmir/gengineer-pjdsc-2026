@@ -33,7 +33,7 @@ package is extracted only when a second real consumer of shared logic exists.
 |---|---|---|---|
 | `firmware/` | CircuitPython, running on the board | **Copied** wholesale to the board's `CIRCUITPY` USB drive | [`firmware/AGENTS.md`](firmware/AGENTS.md) |
 | `data/`, `notebooks/` | Python 3.12 via `uv`, Jupyter | Runs on a laptop or CI, against committed samples | [`notebooks/AGENTS.md`](notebooks/AGENTS.md), [`docs/DATA.md`](docs/DATA.md) |
-| `webapp/` | **Undecided** — no framework has been chosen | Served over HTTP | [`webapp/AGENTS.md`](webapp/AGENTS.md) |
+| `webapp/` | Python 3.12 via `uv` — FastAPI, Jinja2, vanilla JS | Served by `uv run hinigram` | [`webapp/AGENTS.md`](webapp/AGENTS.md) |
 | `tests/` | pytest, Python 3.12 via `uv` | Runs on a laptop or CI; no hardware, no network | [`tests/AGENTS.md`](tests/AGENTS.md) |
 
 `data/raw/` and `data/interim/` hold local-only data and are gitignored.
@@ -151,6 +151,8 @@ Do not "fix" the repository to work around one of them.
   root, keeps hardware behind an injectable seam, and treats everything in
   `firmware/lib/` as read-only vendored code. CI can only prove the firmware
   byte-compiles; a human must flash it. Details: [`firmware/AGENTS.md`](firmware/AGENTS.md).
-- **`webapp/`** has **no framework chosen and no framework decision made**. Do not
-  scaffold a framework, add dependencies, or restructure the repository for a web app
-  until a human chooses one. Details: [`webapp/AGENTS.md`](webapp/AGENTS.md).
+- **`webapp/`** is the Hinigram screening station: FastAPI + Jinja2 + vanilla JS on canvas,
+  one process, **no Node toolchain and no build step**. It owns its own manifest and
+  lockfile, measures nothing before an explicit Start, stores nothing about a person, and
+  keeps every business rule and every patient-facing word in Python. Details:
+  [`webapp/AGENTS.md`](webapp/AGENTS.md).

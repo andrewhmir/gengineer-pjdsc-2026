@@ -1,0 +1,66 @@
+[project]
+name = "hinigram"
+version = "0.1.0"
+description = "Hinigram: a self-service respiratory screening station."
+readme = "README.md"
+requires-python = ">=3.12"
+license = "Apache-2.0"
+dependencies = [
+    # The HTTP shell. FastAPI and Jinja2 keep the station one process with no Node toolchain;
+    # uvicorn serves it. Bounds, not pins: a major bump is a decision, a patch is not.
+    "fastapi>=0.115,<1",
+    "uvicorn>=0.30,<1",
+    "jinja2>=3.1,<4",
+    # The signal path. scipy supplies the zero-phase Butterworth filter (sosfiltfilt) and the
+    # Hilbert transform that the phase-locking value is computed from; numpy does the rest.
+    "numpy>=2.0,<3",
+    "scipy>=1.13,<2",
+    # Contracts and configuration.
+    "pydantic>=2.8,<3",
+    "pydantic-settings>=2.4,<3",
+    # The serial source for the receiver node. Pure Python, and imported lazily so a machine
+    # without it can still run the simulator.
+    "pyserial>=3.5,<4",
+]
+
+[project.scripts]
+hinigram = "hinigram.cli:main"
+
+[dependency-groups]
+dev = [
+    # Pinned exactly to match the root project and the ruff-pre-commit rev, so
+    # `ruff format --check` cannot disagree between the lane, the root, and CI.
+    "ruff==0.17.0",
+    "mypy>=1.11",
+    "pytest>=8.3",
+    # FastAPI's TestClient is httpx-based; the lane suite talks to the app through it.
+    "httpx2>=2.13.1",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["hinigram"]
+
+[tool.hatch.build.targets.sdist]
+include = ["hinigram", "tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+python_version = "3.12"
+files = ["hinigram"]
+ignore_missing_imports = true
+warn_unused_ignores = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-ra --strict-markers"
