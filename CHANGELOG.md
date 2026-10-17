@@ -19,7 +19,11 @@ human-readable summary a judge or a returning teammate can read without walking 
   phase-locking detector, the outcome rules and every patient-facing word, a simulator with
   seven scripted scenarios, a committed replay fixture, and the canvas station scene. Runs with
   no hardware and no Node toolchain: `cd webapp && uv sync && uv run hinigram`. The lane now has
-  its own manifest and lockfile, and the design records its own date and reasoning.
+  its own manifest and lockfile, and the design records its own date and reasoning. Four
+  deviations from the design record are recorded and argued in the build plan: the phase-locking
+  value measures phase diffusion rather than filter lag, the rate comes from the phase slope
+  rather than a spectral peak, the breath-pause detector uses a wider band with hysteresis, and
+  every component now shares one monotonic clock.
 - Web application design record: `specs/2026-10-17-webapp-design.md` settles the framework
   decision the bootstrap deferred — FastAPI, Jinja2, and vanilla JS on canvas, one process,
   no Node toolchain — and specifies a **self-service respiratory screening station**: a person

@@ -1506,10 +1506,35 @@ while the manifest half is here, REQ-120 (torus from staff details).
    stream. The state machine and the payload are unchanged.
 2. **The result panel is rendered client-side** (`§10.1` mentions `kiosk_result`) so a session
    never reloads mid-measure. All patient copy still lives in Python (`rules.py`) and is tested
-   there; the template tests assert the shell, the disclaimer, and the no-camera caption.
+   there; the template tests assert the shell, the disclaimer, and the no-camera caption. The
+   payload carries `headline`, `lede` and `hint` for that reason: the browser composes no
+   sentence and no number.
 3. **Fixtures live inside the package** (`hinigram/fixtures/`, not `webapp/fixtures/`) so the
    installed console script resolves them without a path guess.
 4. **No SQLite store** (`§12`, D-8). The kiosk stores nothing at all, which is the strongest
    reading of REQ-110; the store returns with the staff sessions page.
 5. **A `pipeline/analyze.py` module is added** between `dsp`/`hopf` and `station`, so the state
    machine stays timer-only and the orchestration is unit-testable without a clock.
+6. **The phase-locking statistic measures phase diffusion, not filter lag** (`§7.2`). The spec's
+   damped oscillator driven by the observed waveform tracks its driver, so the phase difference
+   is a constant lag: measured across rate variability from 0 to 15 percent the statistic stayed
+   between 0.88 and 0.93, and it cannot separate a steady rhythm from an irregular one. The
+   implementation keeps the Hopf model, the oscillator, and the PLV definition, but the
+   oscillator is the *autonomous limit cycle* whose frequency is learned from the window; PLV
+   then asks whether each breath stays on that rhythm. Verified: a steady 15 and a steady 26.4
+   breaths per minute both lock above 0.9, and irregular intervals fall below 0.4.
+7. **The rate comes from the phase slope, not the spectral peak** (`§7.1` step 7). An irregular
+   rhythm broadens its spectrum, and a peak estimate reads low: the tachypnea scenario scripted
+   at 28 breaths per minute measured 23.5 and would not have crossed the 24 bpm threshold. The
+   least-squares slope of the breath phase measured 27.2 on the same window. The spectral
+   estimator remains in `dsp.estimate_rr` and is tested on clean tones.
+8. **The breath pause is measured on a wide band with hysteresis** (`§7.1` step 8). The
+   detector's narrow 0.2-0.5 Hz filter rings for several seconds at each edge of a pause and
+   filled the pause with its own transient — a twelve-second pause measured three. The envelope
+   is now taken from a second-order 0.1-1.0 Hz band, entering at a quarter of the median and
+   leaving at half, and the same pause measures 10.2 seconds.
+9. **One clock for the station and its sources.** The state machine runs on a monotonic clock;
+   the simulator and the replay source stamp their frames with it too. During verification they
+   did not: every frame landed decades outside the window being measured, which read as an empty
+   zone and sent the station back to idle. `hinigram/clock.py` is the single source, and two
+   regression tests pin the plumbing.

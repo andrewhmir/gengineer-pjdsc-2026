@@ -73,6 +73,22 @@ the phase-space torus, and the method page — are specified in the design recor
 implemented here. There is no database either: the station stores nothing at all, which is the
 strongest reading of the privacy rule.
 
+## How it measures
+
+Each session is one window of CSI phase from the receiver. The station keeps about forty
+seconds of frames per transmitter and picks the one with the strongest respiratory-band power —
+the node nearest the person; bandpasses 0.2–0.5 Hz, unwraps the phase, and reduces the
+subcarriers to one series; estimates the rate from the slope of the breath phase and the rhythm
+from a phase-locking value against an oscillator locked to that window's own rate; then applies
+the published rule table and refuses to publish a number when the signal is too weak, too short,
+too noisy, or interrupted.
+
+Two measurements depart from the design record's wording, and both are argued in
+[`../specs/2026-10-17-webapp-kiosk-plan.md`](../specs/2026-10-17-webapp-kiosk-plan.md) (§*Known
+deviations*): the phase-locking value measures phase diffusion rather than filter lag, because a
+driven oscillator reads about 0.9 for any input, and the rate comes from the phase slope rather
+than a spectral peak, because an irregular rhythm pulls a peak estimate low.
+
 ## Honest limits
 
 - The detector is a **research prototype**. Its thresholds are prototype values configured in
