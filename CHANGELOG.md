@@ -12,6 +12,18 @@ human-readable summary a judge or a returning teammate can read without walking 
 
 ### Added
 
+- Web application design record: `specs/2026-10-17-webapp-design.md` settles the framework
+  decision the bootstrap deferred — FastAPI, Jinja2, and vanilla JS on canvas, one process,
+  no Node toolchain — and specifies a **self-service respiratory screening station**: a person
+  stands on a marked spot, presses Start, and thirty seconds later reads one of three
+  outcomes. It records the session state machine, the data contracts, the single-subject
+  detector, the patient station scene, the staff phase-space torus, the backend graph with real
+  HTTP probes, the fault-localisation rules, and the acceptance criteria. Three deviations
+  from the proposal are stated, including that the product screens one person per session while
+  multi-subject separation stays an offline result. Design only; no `webapp/` code has landed.
+- Nine detection and accessibility sources recorded in `docs/SOURCES.md`, including the
+  phase-locking value (Lachaux et al., 1999) and the Hopf oscillator (Righetti et al., 2006)
+  the detector is built on, plus WCAG 2.2 as the accessibility standard for the interface.
 - Firmware lane skeleton: `firmware/code.py` (the CircuitPython auto-run entry point) with
   hardware access behind a guarded, injectable seam, plus the lane `README.md` covering
   flashing, the pinned Adafruit bundle `20261010`, and the language subset. Templates

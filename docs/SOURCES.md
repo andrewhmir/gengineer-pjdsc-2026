@@ -124,6 +124,78 @@ The standard classification for disease coding, to be used for any disease categ
 in the analysis so that the terminology matches the source dataset. (Retrieved 10 October
 2026.)
 
+### Web application and detection sources
+
+These support the web application design in
+[`../specs/2026-10-17-webapp-design.md`](../specs/2026-10-17-webapp-design.md): the clinical
+problem, the detector's statistics, and the accessibility standard the interface is held to.
+Each is cited again at the point of use on the Method page.
+
+Cretikos, M. A., Bellomo, R., Hillman, K., Chen, J., Finfer, S., & Flabouris, A. (2008).
+Respiratory rate: The neglected vital sign. *Medical Journal of Australia, 188*(11),
+657–659. https://doi.org/10.5694/j.1326-5377.2008.tb01825.x
+
+Establishes that respiratory rate is the vital sign most often skipped or estimated, which is
+the problem the dashboard exists to address.
+
+Lachaux, J.-P., Rodriguez, E., Martinerie, J., & Varela, F. J. (1999). Measuring phase
+synchrony in brain signals. *Human Brain Mapping, 8*(4), 194–208.
+https://doi.org/10.1002/(SICI)1097-0193(1999)8:4<194::AID-HBM4>3.0.CO;2-C
+
+Defines the phase-locking value (PLV), the statistic the detector computes and the quantity
+the phase-space torus visualises.
+
+Righetti, L., Buchli, J., & Ijspeert, A. J. (2006). Dynamic Hebbian learning in adaptive
+frequency oscillators. *Physica D: Nonlinear Phenomena, 216*(2), 269–281.
+https://doi.org/10.1016/j.physd.2006.02.009
+
+The Hopf-oscillator model that synchronises to a quasi-periodic input; the per-subject
+oscillator follows its form.
+
+Hampel, F. R. (1974). The influence curve and its role in robust estimation. *Journal of the
+American Statistical Association, 69*(346), 383–393.
+https://doi.org/10.1080/01621459.1974.10482962
+
+The robust estimator behind the Hampel filter that removes unwrapping spikes from the phase
+series before separation.
+
+Hyvärinen, A., & Oja, E. (2000). Independent component analysis: Algorithms and applications.
+*Neural Networks, 13*(4–5), 411–430. https://doi.org/10.1016/S0893-6080(00)00026-5
+
+The FastICA algorithm used to separate up to three subjects' breathing from the transmitter
+streams.
+
+Wang, H., Zhang, D., Ma, J., Wang, Y., Wang, Y., Wu, D., Gu, T., & Xie, B. (2016). Human
+respiration detection with commodity WiFi devices: Do user location and body orientation
+matter? In *Proceedings of the 2016 ACM International Joint Conference on Pervasive and
+Ubiquitous Computing* (pp. 25–36). Association for Computing Machinery.
+https://doi.org/10.1145/2971648.2971744
+
+Shows that breathing modulates CSI amplitude and phase measurably, and that location and
+orientation matter — the assumption the interface must not overstate.
+
+Liu, J., Wang, Y., Chen, Y., Yang, J., Chen, X., & Cheng, J. (2015). Tracking vital signs
+during sleep leveraging off-the-shelf WiFi. In *Proceedings of the 16th ACM International
+Symposium on Mobile Ad Hoc Networking and Computing* (pp. 267–276). Association for Computing
+Machinery. https://doi.org/10.1145/2746285.2746303
+
+The accuracy reference for commodity-WiFi breathing rate, and the source of the roughly one
+breath-per-minute expectation.
+
+Soto, J. C. H., Galdino, I., Caballero, E., Ferreira, V., Muchaluat-Saade, D., & Albuquerque,
+C. (2022). A survey on vital signs monitoring based on Wi-Fi CSI data. *Computer
+Communications, 195*, 99–110. https://doi.org/10.1016/j.comcom.2022.08.004
+
+The survey documenting that most CSI vital-sign systems assume a single still subject and
+report an averaged rate — the limitation this project's multi-subject view is meant to
+expose rather than hide.
+
+World Wide Web Consortium. (2023). *Web content accessibility guidelines (WCAG) 2.2*. W3C
+Recommendation. https://www.w3.org/TR/WCAG22/
+
+The accessibility standard the interface is held to: contrast, non-colour status encoding,
+and keyboard operation.
+
 ## Template for future dataset entries
 
 Datasets are **not yet chosen** — see §9 of the deferred decisions in
