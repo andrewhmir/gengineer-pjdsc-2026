@@ -50,3 +50,38 @@ def test_patient_copy_is_not_hard_coded_in_the_template(client: TestClient) -> N
 
 def test_the_panel_starts_in_a_neutral_loading_state(client: TestClient) -> None:
     assert "Starting the station" in client.get("/").text
+
+
+def test_the_page_loads_its_three_scripts(client: TestClient) -> None:
+    body = client.get("/").text
+    for script in ("station.js", "wave.js", "app.js"):
+        assert "/static/js/" + script in body
+
+
+def test_the_staff_fold_is_part_of_the_client_render(client: TestClient) -> None:
+    script = client.get("/static/js/app.js").text
+    assert "Details for staff" in script
+    assert "<details" not in script  # built with the DOM, not string concatenation
+    assert "createElement" in script
+
+
+def test_the_client_never_invents_a_number(client: TestClient) -> None:
+    """Every value comes from the payload: no random data, no baked-in rate."""
+    script = client.get("/static/js/app.js").text
+    assert "Math.random" not in script
+    assert "breaths / min" not in script
+
+
+def test_the_scene_module_exposes_its_interface(client: TestClient) -> None:
+    script = client.get("/static/js/station.js").text
+    assert "window.StationScene" in script
+    assert "setState" in script
+    assert "Math.random" not in script
+    assert "prefers-reduced-motion" in script
+
+
+def test_the_three_scripts_are_served(client: TestClient) -> None:
+    for script in ("station.js", "wave.js", "app.js"):
+        response = client.get("/static/js/" + script)
+        assert response.status_code == 200
+        assert response.text.strip()

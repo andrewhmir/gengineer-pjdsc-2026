@@ -194,6 +194,12 @@ body {
   color: var(--muted);
 }
 
+.hint {
+  margin: 12px 0 0;
+  font-size: 16px;
+  color: var(--faint);
+}
+
 /* ---------- panel copy ---------- */
 
 .state-k {
@@ -272,6 +278,7 @@ body {
 
 .chip {
   display: inline-flex;
+  align-self: flex-start;
   align-items: center;
   gap: 8px;
   padding: 6px 12px;
