@@ -33,13 +33,15 @@ documents; they point at them.
 ## `specs/` — frozen design records
 
 `specs/` holds the design documents this repository was built from, kept **as approved**.
-It has no index file; these are the three documents in it:
+`specs/` holds the design documents this repository was built from, kept **as approved**.
+It has no index file; these are the four documents in it:
 
 | Document | Contents |
 |---|---|
 | [`../specs/2026-10-10-repo-bootstrap-design.md`](../specs/2026-10-10-repo-bootstrap-design.md) | The repository bootstrap design: requirements derived from the official rubric, the chosen approach, the layout, the toolchain, the collaboration conventions, and the acceptance criteria (`REQ-0xx`). |
 | [`../specs/2026-10-10-repo-bootstrap-plan.md`](../specs/2026-10-10-repo-bootstrap-plan.md) | The implementation plan: the tasks that produce the design above, each with its test and verification step. |
-| [`../specs/2026-10-17-webapp-design.md`](../specs/2026-10-17-webapp-design.md) | The web application design: the framework decision that the bootstrap deferred, the self-service screening station and its session state machine, the data contracts, the detector, the patient station scene and the staff phase-space torus, the backend fault-localisation rules, and the acceptance criteria (`REQ-1xx`). |
+| [`../specs/2026-10-17-webapp-design.md`](../specs/2026-10-17-webapp-design.md) | The web application design: the framework decision the bootstrap deferred, the self-service screening station and its session state machine, the data contracts, the detector, the patient station scene, the deferred staff surfaces, and the acceptance criteria (`REQ-1xx`). |
+| [`../specs/2026-10-17-webapp-kiosk-plan.md`](../specs/2026-10-17-webapp-kiosk-plan.md) | The kiosk implementation plan: the 13 tasks that build the station slice of the design above, each with its failing test, its implementation step, and its verification command. |
 
 These files are **historical records, not living documentation**. They are excluded from
 `ruff` formatting for that reason, and they are not edited to match later reality: a

@@ -20,7 +20,7 @@ rather than one directory tree per discipline or one repository per component.
 |---|---|---|---|---|
 | Firmware | `firmware/` | CircuitPython, executed on the board | **Copied** wholesale to the board's `CIRCUITPY` USB drive | Reading sensors and posting a reading to an endpoint. |
 | Data / analysis | `data/`, `notebooks/` | Python 3.12 via `uv`, Jupyter | Runs on a laptop or CI, against committed samples | Acquiring, cleaning, and analysing the public health data. |
-| Web | `webapp/` | **Undecided** — no framework has been chosen | Served over HTTP | The product a health worker actually uses. |
+| Web | `webapp/` | Python 3.12 via `uv` — FastAPI, Jinja2, vanilla JS on canvas | Served over HTTP by `uv run hinigram` | The screening station a patient stands in front of. |
 
 Two further directories are **cross-cutting** and do not constitute a fourth lane:
 
@@ -85,15 +85,18 @@ consumer of shared logic appears, `src/` is extracted **then** — an additive c
 rewrite. This is recorded as a deferred decision in
 [`specs/2026-10-10-repo-bootstrap-design.md`](../specs/2026-10-10-repo-bootstrap-design.md) §9.
 
-### 4. One `pyproject.toml`, at the repository root, and it builds no package
+### 4. One `pyproject.toml` at the root, and one inside `webapp/`
 
-`webapp/` receives its own manifest only when it has real code. At that point the root
-`pyproject.toml` gains an explicit `tool.uv.workspace` exclusion so that `uv sync` at the
-root does not try to resolve it. A placeholder manifest would be a lie about a decision
-that has not been made.
+The root `pyproject.toml` builds no package and resolves the analysis and test tooling. The
+root project sets `package = false` under `[tool.uv]`: this repository ships no importable
+package, so `uv` must not try to build or install the project itself.
 
-The root project sets `package = false` under `[tool.uv]`: this repository ships no
-importable package, so `uv` must not try to build or install the project itself.
+`webapp/` has its own manifest and lockfile because it has a different runtime shape — a
+served application with its own console script, not a notebook environment — and because a
+judge must be able to run it without the analysis dependencies. The root project excludes
+the lane from its workspace, so a `uv sync` at the root neither resolves nor installs it.
+Two environments, one repository: the browser application is not a notebook dependency and
+the notebooks are not a server dependency.
 
 ### 5. `data/` keeps its structure in Git and its contents out
 

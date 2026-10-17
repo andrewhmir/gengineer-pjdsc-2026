@@ -24,6 +24,7 @@ jobs:
       python: ${{ steps.changed.outputs.python }}
       notebooks: ${{ steps.changed.outputs.notebooks }}
       firmware: ${{ steps.changed.outputs.firmware }}
+      webapp: ${{ steps.changed.outputs.webapp }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -98,6 +99,16 @@ jobs:
             echo "firmware=true" >> "$GITHUB_OUTPUT"
           else
             echo "firmware=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          # The station owns its own manifest, lockfile, and environment, so it gets its own
+          # job. It is matched on its own path prefix rather than on `.py`, because a change to
+          # a template, the stylesheet, or the replay fixture can break the station just as
+          # surely as a change to a Python module.
+          if grep -q '^webapp/' changed-files.txt; then
+            echo "webapp=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "webapp=false" >> "$GITHUB_OUTPUT"
           fi
 
   # Guarded: an unimplemented or untouched lane must never fail a pull request.
@@ -188,6 +199,40 @@ jobs:
           find firmware -name '*.py' -not -path '*/lib/*' -print0 \
             | xargs -0 python -m py_compile
 
+  # The station has its own manifest, lockfile, and environment, so it gets its own job and
+  # its own `uv sync`. Everything runs with `working-directory: webapp`; the root environment
+  # deliberately does not install the station's dependencies.
+  webapp:
+    name: Webapp station
+    needs: changes
+    if: needs.changes.outputs.webapp == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: webapp
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Install the locked environment
+        run: uv sync --locked
+
+      - name: Check formatting
+        run: uv run ruff format --check .
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Type-check
+        run: uv run mypy
+
+      - name: Run the lane suite
+        run: uv run pytest -q
+
   # Always runs: secret scanning cannot be skipped by a changed-path guard,
   # which is exactly what makes it an enforcement point rather than a backstop.
   # The gitleaks CLI is installed directly instead of using
@@ -227,7 +272,7 @@ jobs:
   # therefore a pass. A job that failed, or was cancelled, is not.
   ci-success:
     name: ci-success
-    needs: [changes, lint, test, notebooks, firmware, secrets]
+    needs: [changes, lint, test, notebooks, firmware, webapp, secrets]
     if: always()
     runs-on: ubuntu-latest
     steps:
