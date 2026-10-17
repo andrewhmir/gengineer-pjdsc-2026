@@ -14,9 +14,11 @@ human-readable summary a judge or a returning teammate can read without walking 
 
 - Web application design record: `specs/2026-10-17-webapp-design.md` settles the framework
   decision the bootstrap deferred — FastAPI, Jinja2, and vanilla JS on canvas, one process,
-  no Node toolchain — and specifies the data contracts, the per-subject phase-space torus,
-  the backend graph with real HTTP probes, the fault-localisation rules, and the acceptance
-  criteria. Design only; no `webapp/` code has landed.
+  no Node toolchain — and specifies the data contracts, the 3D bay view that flags the patient
+  whose breathing trips a rule, the per-subject phase-space torus, the backend graph with real
+  HTTP probes, the fault-localisation rules, and the acceptance criteria. The bay is a
+  configured bed map, not patient tracking, and the spec says so in the requirement, the
+  privacy section, and the scene caption. Design only; no `webapp/` code has landed.
 - Nine detection and accessibility sources recorded in `docs/SOURCES.md`, including the
   phase-locking value (Lachaux et al., 1999) and the Hopf oscillator (Righetti et al., 2006)
   the detector is built on, plus WCAG 2.2 as the accessibility standard for the interface.

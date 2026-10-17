@@ -22,7 +22,7 @@ dashboard for the Hinigram respiratory triage prototype, whose backend is itself
 graph of live API checks so that a fault is localised to a specific component.
 
 Decisions taken here: the framework, the runtime shape, the data contracts, the detector
-the UI renders, the five screens, the fault-localisation rules, and the acceptance criteria.
+the UI renders, the six screens, the fault-localisation rules, and the acceptance criteria.
 
 **A note on repository consistency.** Until the first implementation task lands,
 [`webapp/README.md`](../webapp/README.md) still states that no framework has been chosen,
@@ -66,7 +66,7 @@ Every requirement is testable and is traced to an acceptance criterion in §15.
 | REQ-102 | The app runs with **no hardware attached**, from a committed synthetic replay fixture and a simulator. | O2, rubric reproducibility |
 | REQ-103 | Every clinical surface states its data source (`LIVE`, `REPLAY`, `SIM`). Simulated data must never look live. | Honesty rule, §12 |
 | REQ-104 | The monitor shows up to three subjects, each with RR, PLV, amplitude, state, age of last update, and a 60 s rhythm strip. | O3, O5 |
-| REQ-105 | Each subject has a detail page with the 3D phase-space torus and its 2D circular twin. | O4, §8 |
+| REQ-105 | A **bay view** draws the configured beds in 3D, one patient per bed, with the state of each. The patient whose breathing trips a rule is ringed, labelled in place, and listed first. | O4, O5, §8.1 |
 | REQ-106 | Alerts are listed with onset, rule, RR, PLV, and measured latency; the list exports to CSV. | O4, O5 |
 | REQ-107 | The system page draws nine nodes and their data-flow edges; every check is a real HTTP probe with a 500 ms timeout or an explicit data-liveness check, timestamped. | Fault isolation |
 | REQ-108 | A fault is reported as one root cause; downstream nodes are marked `unknown — blocked by X`, never `down`. | Fault isolation |
@@ -80,6 +80,8 @@ Every requirement is testable and is traced to an acceptance criterion in §15.
 | REQ-116 | A method page states the pipeline, the detector, the thresholds, and their citations. | Rubric: sources |
 | REQ-117 | The server binds `127.0.0.1` by default. Any other bind requires an explicit flag and prints a warning. | Privacy |
 | REQ-118 | `webapp/` owns its dependency manifest and lockfile; the root `pyproject.toml` gains a `tool.uv.workspace` exclusion so root `uv sync` does not resolve it. | Bootstrap §4 |
+| REQ-119 | The bay view never claims to locate a patient. Bed positions come from a configured map, and the caption says so; CSI supplies state per bed, not coordinates. | Honesty rule, §8.1 |
+| REQ-120 | Each subject has a detail page with the phase-space torus and its 2D circular twin, reachable from the bay and from the list. | O4, §8.2 |
 
 ## 3. Decisions
 
@@ -90,7 +92,7 @@ Each decision names the alternative that was rejected and why.
 | D-1 | **FastAPI + Jinja2 + vanilla JS on canvas.** No Node toolchain. | React/Vite SPA; HTMX + Chart.js | The rubric weights clean-clone reproducibility highest. A judge with `uv` and the repository gets a running UI; a Node build adds a second toolchain, a lockfile, and a CI job, and fails the "no network at run time" spirit when assets come from a CDN. |
 | D-2 | **One process, components mounted as health sub-resources, probed over real HTTP.** | Separate uvicorn processes; in-process function calls | Real HTTP exercises the path that actually fails (port, hang, 5xx) and keeps one command. Function calls cannot distinguish a hung service from a wrong probe. Separate processes cost a message bus and a launcher in a one-week build. |
 | D-3 | **Complex Hopf oscillator per subject integrated with numpy RK4**; the notebook's torch `ResonanceNetwork` stays in the research lane. | Ship torch and load the trained bank | The live detector needs 1–3 oscillators, not 16–64; RK4 in numpy is exact enough at 100 Hz and removes a 2 GB dependency from the demo laptop. The Method page states the split so no reader confuses the study with the product. |
-| D-4 | **3D torus drawn with a perspective projection on canvas.** No WebGL library. | Three.js; a 2D-only phase plot | The torus needs ~200 lines and no dependency, stays offline, and renders at 30 fps for 300 points. A 2D circular plot is not a fallback gimmick here: the resultant vector of the phase difference *is* the PLV, so the twin is shown alongside the torus, always. |
+| D-4 | **Both 3D views — the bay and the torus — use a perspective projection on canvas.** No WebGL library. | Three.js; a 2D-only face | A room of beds and a torus of phases are both small, fixed geometry; projection plus painter's ordering is ~300 lines and no dependency, stays offline, and renders at 30 fps. A 2D circular plot is not a fallback gimmick here: the resultant vector of the phase difference *is* the PLV, so the twin is shown alongside the torus, always. Three.js would buy lighting and depth buffers that this scene does not need. |
 | D-5 | **Cascade suppression with a single verdict sentence.** | Per-node red/green only | Eight red nodes do not answer "is this the microcontroller or the backend". One root cause plus one action does. |
 | D-6 | **Light clinical surfaces; dark surfaces only for engineering.** | Dark mode for everything; dark mode toggle | Clinical reading benefits from light surfaces and high contrast under room lighting. The dark ops panel is a semantic signal ("this is engineering, not patient data"), not a theme. No toggle in the MVP. |
 | D-7 | **SQLite via the standard library, 24 h retention.** | Postgres; in-memory only | Events must survive a page reload without a service dependency. In-memory loses the audit trail a judge asks about. |
@@ -147,15 +149,17 @@ webapp/
       probes.py             HTTP probe with timeout, liveness checks, history
       diagnosis.py          root-cause rules, cascade suppression, verdict text
     store.py                SQLite schema, writes, retention, CSV export
-    templates/              base, monitor, subject, system, events, method, error
+    templates/              base, bay, list, subject, system, events, method, error
     static/
       css/app.css           design tokens and components
       js/app.js             SSE client, formatting, table behaviour
       js/wave.js            rhythm strip rendering
+      js/bay.js             bay scene: projection, room, beds, patients, rings
       js/torus.js           torus geometry, projection, interaction
       js/rose.js            circular phase-difference plot
       js/system.js          graph layout and probe table
   fixtures/
+    bay.json                configured bed map (synthetic coordinates)
     replay_session.jsonl    synthetic replay (small, labelled synthetic)
     scenarios.json          tachypnea / apnea demo definitions
   tests/                    pytest, offline, deterministic
@@ -235,6 +239,26 @@ Header exactly:
 No other column may be added without a privacy review: this file is the artifact most likely
 to be opened outside the app.
 
+### 6.6 Bay map (`webapp/fixtures/bay.json`, served at `GET /api/v1/bay`)
+
+The bay is a **configured map**, not a tracking result: it says where the beds are and which
+subject is in each. It carries no patient data beyond the session-scoped subject ID.
+
+```json
+{"room": {"width_m": 5.4, "depth_m": 4.2},
+ "beds": [{"id": "bed-1", "label": "Bed 1", "subject": "S1", "x": 1.15, "z": 1.85},
+          {"id": "bed-2", "label": "Bed 2", "subject": "S2", "x": 2.70, "z": 1.85},
+          {"id": "bed-3", "label": "Bed 3", "subject": "S3", "x": 4.25, "z": 1.85}],
+ "nodes": [{"id": "tx1", "label": "TX-1", "x": 0.26, "z": 0.30},
+           {"id": "tx2", "label": "TX-2", "x": 5.14, "z": 0.30},
+           {"id": "tx3", "label": "TX-3", "x": 0.26, "z": 3.92},
+           {"id": "rx",  "label": "RX",   "x": 5.14, "z": 3.92}]}
+```
+
+Coordinates are metres in the room frame, `x` across and `z` into the depth; the origin is the
+back-left corner. A bed with `"subject": null` is drawn empty. The file is configuration, so a
+room is described by editing it, not by tracking anyone.
+
 ## 7. Signal path and detector
 
 ### 7.1 Pipeline
@@ -294,9 +318,43 @@ written per onset, with `latency_ms` measured from the newest frame in the trigg
 to the event's `onset_ms`. Acknowledging an event records the acknowledgement; it does not
 change the subject's state, because the physiology has not changed.
 
-## 8. The phase-space torus
+## 8. Spatial views: the bay and the torus
 
-### 8.1 What it encodes
+### 8.1 The bay (3D)
+
+The landing question in an emergency bay is not "what is the phase trajectory", it is **"which
+patient in this room needs someone first"**. The bay view answers that spatially.
+
+It draws, from a perspective camera on a plain 2D canvas: the room floor, the configured beds,
+one abstract patient per bed, the three transmitter markers and the receiver, and the sensing
+links between them. The patient whose breathing trips a rule is **ringed on the floor, outlined
+on the body, tagged in place** (`FLAGGED · 26.4 br/min`) and listed first in the rail. A patient
+in Watch gets an amber ring and nothing else. A normal patient is unmarked. An empty bed is
+drawn as an empty bed.
+
+**It does not locate anyone.** Bed positions come from `bay.json` (§6.6) and the CSI pipeline
+reports state per bed, not coordinates. The caption says this in one line, and no element of the
+scene implies tracking. This is the difference between a spatial *display* and a spatial *claim*,
+and the write-up must keep the distinction.
+
+Data: `GET /api/v1/bay` for the map, `GET /api/v1/state` for the per-subject state, both polled
+with the snapshot. Rendering is painter's-ordered by projected depth — no WebGL, no library, and
+therefore nothing that can fail to load offline.
+
+Interaction: drag to orbit, wheel to zoom, a `Top` preset for a plan view, then a `Bay view`
+preset back. The camera is clamped so the room cannot be lost off-screen.
+
+Motion: each patient's chest scales with that subject's own rate, so a viewer can see one
+patient breathing fast while another breathes normally. The flagged ring pulses at about 0.9 Hz.
+Apnea draws no motion at all and a flat marker — the absence is the signal. Auto-motion stops
+under `prefers-reduced-motion`; the state rings and the tag remain.
+
+Text placement is the hard part of any 3D scene: labels collide at some camera angle. So the
+scene carries **only one in-place tag** (the flagged patient) and one short bed number per bed;
+every other fact lives in the rail beside the scene, in the same order as the acuity sort. The
+rail repeats every in-scene fact in text, which is also what makes the view accessible.
+
+### 8.2 The phase-space torus
 
 The breathing phase `θ_b = φ_breath mod 2π` and the oscillator phase `θ_o = φ_osc mod 2π` are
 two angles, so the pair lives on a torus. The trajectory over the window is a curve on that
@@ -312,7 +370,7 @@ surface:
 This is the visual the proposal calls "a stable limit cycle (torus) in phase-space". The app
 makes it literal, and it is the evidence for an alert rather than decoration beside it.
 
-### 8.2 Geometry and rendering
+### 8.3 Torus geometry and rendering
 
 Surface: standard torus, `P(u,v) = ((R + r cos v) cos u, (R + r cos v) sin u, r sin v)` with
 `R = 1.0`, `r = 0.38`. Wireframe at 32 × 12 segments. Camera: yaw, pitch (clamped ±70°),
@@ -327,7 +385,7 @@ Interaction: drag to orbit, wheel to zoom, auto-rotate at 0.05 rad/s when idle, 
 the tab is hidden (`visibilitychange`) and disabled under `prefers-reduced-motion`. Rendering
 is capped at 30 fps and only redraws when the camera moves or a new snapshot arrives.
 
-### 8.3 The 2D twin
+### 8.4 The 2D twin
 
 Beside the torus, always: a circular histogram of `Δφ = φ_breath − φ_osc` over the window,
 with the mean resultant vector drawn from the origin. **The length of that vector is the
@@ -335,7 +393,7 @@ PLV**, by definition, and its angle is the mean phase lag. When the 3D view is i
 projector, this panel still carries the claim, and it teaches the definition to a judge in
 one glance.
 
-### 8.4 Failure modes and their display
+### 8.5 Failure modes and their display
 
 | Condition | Display |
 |---|---|
@@ -393,23 +451,36 @@ First match wins. The verdict is one sentence plus one action; the graph is the 
 
 ## 10. Screens
 
-Five routes, each with an explicit empty, stale, and simulated state.
+Six routes, each with an explicit empty, stale, and simulated state. Every route shares one
+header: product and room label, clock, source chip, the `Bay | List | System` tabs, and the
+disclaimer bar.
 
-### 10.1 `/` — Triage board (default)
+### 10.1 `/` — Bay (default)
 
-Header: product/room label, live clock, source chip, connection state. Disclaimer bar.
-Acuity strip (distress / watch / normal / unassigned counts). Table, sorted by acuity then
-recency: subject ID, RR with unit, PLV with threshold bar, 60 s sparkline, state chip, age.
-Below: the selected subject's rhythm strip and metrics. Footer strip: nine health checks as
-compact pills, overall verdict, link to `/system`. Clicking a subject opens `/subject/{id}`.
+The 3D bay of §8.1 on the left, the acuity-ordered patient rail on the right, a flag banner
+above it (`Bed 2 · S2 — tachypnea, 42 s, unacknowledged`), and the tool row (`Bay view`, `Top`,
+`Sensing`). The caption states that bed positions are the configured map. Each rail card links
+to that subject's page; the beds themselves are also clickable.
 
-### 10.2 `/subject/{id}` — Phase space
+This is the landing view because it answers the first question in an emergency bay — who in
+this room needs someone — and because it is the one screen a judge remembers. The list is one
+click away and is the better surface for several patients or a small screen.
+
+### 10.2 `/list` — Triage list
+
+Acuity strip (distress / watch / normal / unassigned counts). Table sorted by acuity then
+recency: subject ID and bed, RR with unit, PLV with threshold bar, 60 s sparkline, state chip,
+age. Below: the selected subject's rhythm strip and metrics. Footer: the nine health checks as
+compact pills, the overall verdict, and a link to `/system`. Clicking a row opens
+`/subject/{id}`.
+
+### 10.3 `/subject/{id}` — Phase space
 
 Large torus (left), 2D circular twin (right), rhythm strip and PLV-over-time beneath, the
 active rule and its thresholds, and the subject's events. This is the page a judge is shown
 when the demo flags someone.
 
-### 10.3 `/system` — Backend graph
+### 10.4 `/system` — Backend graph
 
 Dark engineering surface. The nine nodes laid out as the data flow (three Tx merging into
 Rx, then the service chain, with the store hanging off the API), edges labelled with live
@@ -417,12 +488,12 @@ metrics, node status by dot + word, and the verdict banner at the top. Below: th
 with the last 60 checks per node, a "Run checks now" button, and the cadence plus timeout
 statement. This page is the answer to "is it the microcontroller or the backend".
 
-### 10.4 `/events` — Event log
+### 10.5 `/events` — Event log
 
 Table of events with onset (absolute and relative), subject, kind, RR, PLV, latency,
 acknowledged. Filter by kind. CSV download. Empty state explains what would create an event.
 
-### 10.5 `/method` — Method and provenance
+### 10.6 `/method` — Method and provenance
 
 Pipeline diagram (text and SVG, no external assets), the PLV definition with the resultant
 vector figure, thresholds and where they are configured, the evaluation section (artifact or
@@ -450,8 +521,8 @@ relatively ("42 s ago").
 
 Status is double-encoded (dot + word) and never by colour alone. Red is reserved for clinical
 distress and system failure; amber for watch and degraded; nothing else uses either. Focus is
-visible at 2 px accent outline. Motion is limited to the live indicator and the torus; it
-stops under `prefers-reduced-motion`.
+visible at 2 px accent outline. Motion is limited to the live indicator, the breath scale in the
+bay, and the torus; it stops under `prefers-reduced-motion`.
 
 ## 12. Privacy, security, retention
 
@@ -460,6 +531,9 @@ stops under `prefers-reduced-motion`.
   and the README say so plainly rather than implying security that does not exist.
 - No identifiers: subject IDs are assigned per session, `S1`–`S3`, and are not persisted
   across sessions. No images, audio, names, or device identifiers are stored.
+- The bay draws an **abstract patient outline**, not a photograph, a body scan, or a
+  reconstruction. It carries no identifying detail by construction, and because the positions
+  are a configured map it reveals nothing about where a person actually is.
 - SQLite file `webapp/.data/hinigram.db`, gitignored, WAL mode, 24 h retention, pruned on
   start and hourly. The event CSV carries no free-text field.
 - Logs contain counters, node IDs, and timings, never frame payloads.
@@ -488,10 +562,10 @@ Offline, deterministic, under 15 s, no hardware. Tests assert behaviour, not imp
 | `test_dsp.py` | synthetic 15 bpm sine → RR within 1 bpm; 26 bpm → within 1; Hampel removes injected spikes but keeps the rhythm; bandpass rejects 0.05 Hz and 2 Hz; FastICA recovers two mixed sources with correlation > 0.95; PLV ≈ 1 for identical phase, ≈ 0 for randomised phase |
 | `test_rules.py` | each rule's boundary; 3-epoch confirmation; hysteresis clear after 5 epochs; one event per onset; latency calculation from newest frame |
 | `test_probes.py` | ok / timeout / 5xx via `httpx.MockTransport`; retry once; latency recorded; cascade suppression marks descendants `unknown` and names one root cause; verdict text per code |
-| `test_contracts.py` | every endpoint's JSON validates against its pydantic model; CSV header exact; no extra columns |
+| `test_contracts.py` | every endpoint's JSON validates against its pydantic model; the bay map validates and a null subject is an empty bed; CSV header exact; no extra columns |
 | `test_store.py` | event roundtrip, acknowledgement, retention prune, WAL survives reopen |
 | `test_sources.py` | simulator is deterministic for a seed; replay parses the committed fixture; serial parser handles a fragmented line and a malformed line |
-| `test_templates.py` | every route renders 200 with the disclaimer and source chip; no `http://` or `https://` asset reference in any template; torus canvas present with `data-` attributes |
+| `test_templates.py` | every route renders 200 with the disclaimer and source chip; no `http://` or `https://` asset reference in any template; the bay page carries the map caption, one ring per Distress subject, and a link from every bed; torus canvas present with `data-` attributes |
 | `test_accessibility.py` | status text present alongside every status dot in rendered HTML; focus styles declared; no colour-only state class without a word |
 
 The JS canvas modules are verified by the demo script and a visual check, not by a JS test
@@ -502,7 +576,7 @@ runner: adding Node would reverse D-1. This is a conscious tradeoff, recorded he
 | ID | Criterion | How it is checked |
 |---|---|---|
 | AC-101 | From a clean clone: `cd webapp && uv sync && uv run hinigram` serves `http://127.0.0.1:8765`. | Manual, then documented in the lane README |
-| AC-102 | `/`, `/system`, `/events`, `/method`, `/subject/S2` return 200 within 1 s of start. | `test_templates.py` |
+| AC-102 | `/`, `/list`, `/system`, `/events`, `/method`, `/subject/S2` return 200 within 1 s of start. | `test_templates.py` |
 | AC-103 | With the simulator set to 26 bpm, an event is written within 20 s, the subject shows Distress, and the recorded latency is ≤ 2 000 ms. | Scripted scenario test |
 | AC-104 | With a source whose frames stop, `/system` marks `rx` down, descendants `unknown`, and the verdict names the USB link. | `test_probes.py` + scenario |
 | AC-105 | With the analyzer task stopped, the verdict names the analyzer, not the microcontrollers. | Scenario test |
@@ -514,6 +588,8 @@ runner: adding Node would reverse D-1. This is a conscious tradeoff, recorded he
 | AC-111 | The Method page shows "evaluation pending" when the artifact is absent, and artifact values only when it is present. | `test_templates.py` |
 | AC-112 | The torus renders 300 points at ≥ 30 fps on the demo laptop, and the 2D twin's vector length equals the reported PLV within 0.01. | Manual + `test_contracts.py` for the value |
 | AC-113 | Root suite (`uv run pytest` at the repository root) still passes, with the placeholder test updated to the new lane shape. | CI |
+| AC-114 | The bay renders with no WebGL, rings exactly the subjects in Distress, draws an empty bed for a null subject, and carries the map caption of §8.1. | `test_templates.py` + manual |
+| AC-115 | Every bed and every rail card links to that subject's page, and the flagged subject is first in the rail regardless of bed order. | `test_templates.py` |
 
 ## 16. Deviations from the proposal
 
@@ -529,6 +605,13 @@ Two, both of which the slide deck and the report must state.
    implementation and the source of the reported study. The app does not claim to run the
    trained bank.
 
+**Addition beyond the proposal.** The bay view (§8.1) is new: the proposal asks only for
+"each subject's breathing waveform and distress alerts". The bay adds spatial orientation for a
+room with several beds, and it is justified by the emergency-room use the team intends. It is an
+addition, not a substitution, so the write-up should present it as such — and must repeat the
+one-sentence disclaimer from §8.1 whenever it shows the scene: **the beds are a configured map,
+not a location estimate.**
+
 ## 17. Deferred decisions
 
 | Deferred | Reopens when |
@@ -536,7 +619,8 @@ Two, both of which the slide deck and the report must state.
 | Authentication and multi-operator sessions | A second operator, or any non-loopback deployment |
 | Multi-room / multi-receiver support | A second receiver node exists |
 | HL7 FHIR or CSV exchange with a facility system | A facility asks, which is beyond the prototype |
-| Real WebGL/Three.js scene | The canvas torus cannot carry the geometry needed |
+| Real WebGL/Three.js scene | The canvas projection cannot carry the geometry needed (today it can) |
+| Patient localisation / tracking | A second receiver allows ranging, and an ethics review approves it; until then the bay is a map, not a tracker |
 | Persistent subject identity across sessions | Ethics approval and a consent process exist |
 | Postgres or a time-series store | Event volume exceeds a day's retention window |
 | Evaluation artifact generator | The detector evaluation notebook cell is written |
@@ -548,14 +632,17 @@ Two, both of which the slide deck and the report must state.
 |---|---|
 | No Rx firmware yet, so no live frames | The frame contract is the interface; simulator and replay exercise it identically. The serial path is one adapter, tested with a fake stream. |
 | CSI payload differs from §6.1 | `v` field and a parser that rejects unknown versions loudly rather than silently mis-reading. |
-| Torus illegible at 1280 × 720 on a projector | The 2D twin carries the claim; sizes are set for 720p from the first build. |
+| Bay read as a tracking system | Fixed by language and by construction: positions come from `bay.json`, nothing animates position, and the caption says it. REQ-119 is the check. |
+| Bay illegible at 1280 × 720 on a projector | The rail carries every fact in text; the scene adds orientation only. Sizes are set for 720p from the first build. |
+| Torus illegible at 1280 × 720 on a projector | The 2D twin carries the claim. |
 | Schedule: one week to submission | Cut order below; the demo spine never depends on a cut item. |
 | FastICA convergence on real CSI | Falls back to per-transmitter tracks with a visible "separation unchecked" note rather than producing a confident wrong number. |
 
 **Cut order when time runs short** (cut from the top): Method page → Events CSV export →
-event acknowledgement → probe history sparklines → torus interaction (keep the static
-render) → `/events` page (fold the last three events into the board). **Never cut:** the
-monitor, the system verdict, the disclaimer, the source chip, the latency display.
+event acknowledgement → probe history sparklines → torus interaction (keep the static render) →
+`/events` page (fold the last three events into the list) → bay client-side animation (keep the
+rings and the tag, drop the chest motion). **Never cut:** the bay's flag ring and tag, the list,
+the system verdict, the disclaimer, the source chip, the latency display.
 
 ## 19. Open items for the maintainer
 
