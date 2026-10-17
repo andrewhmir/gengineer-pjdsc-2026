@@ -90,3 +90,80 @@ class Health(BaseModel):
     source: SourceName
     detail: str
     last_frame_age_ms: int | None = None
+
+
+#: The session states. A station is in exactly one of them, and the transitions are owned by
+#: ``station.Station`` — nothing else may write a state.
+StationState = Literal["idle", "settle", "measuring", "result"]
+
+#: The only three things a screening may conclude. There is deliberately no fourth.
+Outcome = Literal["regular", "irregular", "unclear"]
+
+#: Which rule produced the outcome. ``none`` means the regular branch with no caveat.
+RuleName = Literal["none", "tachypnea", "apnea", "unsteady", "low_quality"]
+
+#: What the patient is asked to do. Kept separate from the outcome so a regular-but-marginal
+#: reading can carry ``watch`` without becoming an alarm.
+Advice = Literal["none", "watch", "speak_to_nurse", "try_again"]
+
+#: How much the measurement can be trusted. Low or none forces ``unclear`` (REQ-122).
+Confidence = Literal["high", "low", "none"]
+
+#: Words, not colours: the panel prints one of these beside the rate.
+Rhythm = Literal["Steady", "Unsteady", "Unknown"]
+
+#: Chip tones map to the design tokens; the text is what a person reads.
+ChipTone = Literal["ok", "warn", "crit", "neutral"]
+StepStatus = Literal["done", "on", "todo"]
+
+
+class Metric(BaseModel):
+    """One number rendered on the result panel, formatted server-side so the copy is tested."""
+
+    label: str
+    value: str
+    unit: str | None = None
+
+
+class StaffDetails(BaseModel):
+    """The values behind the collapsed "Details for staff" fold."""
+
+    plv: float | None
+    plv_threshold: float
+    window_s: float
+    breaths: int
+    tx_used: str | None
+
+
+class Chip(BaseModel):
+    """A small status pill: a word and a tone, never colour alone."""
+
+    text: str
+    tone: ChipTone
+
+
+class StepState(BaseModel):
+    """One item of the three-step strip above the action button."""
+
+    label: str
+    status: StepStatus
+
+
+class Result(BaseModel):
+    """The outcome of one screening, with the numbers and the rule that produced it."""
+
+    outcome: Outcome
+    rule: RuleName
+    headline: str
+    lede: str
+    advice: Advice
+    rr_bpm: float | None
+    plv: float | None
+    breaths: int
+    usable_s: float
+    confidence: Confidence
+    rhythm: Rhythm
+    flagged: bool
+    metrics: list[Metric]
+    details: StaffDetails
+    thresholds: Thresholds

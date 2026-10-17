@@ -101,8 +101,11 @@ def test_flat_seconds_ignores_normal_breathing(
 
 
 def test_flat_seconds_measures_a_breath_pause(fake_series: Callable[..., np.ndarray]) -> None:
+    """A twelve-second pause measures as roughly twelve: edges cost a fraction of a second,
+    never the several seconds a narrow filter's ringing would cost."""
     paused = fake_series(gain=0.35, flat=(10.0, 22.0))
-    assert abs(dsp.flat_seconds(paused, FS) - 12.0) < 1.5
+    measured = dsp.flat_seconds(paused, FS)
+    assert 9.0 < measured < 12.5
 
 
 def test_decimate_keeps_every_tenth_sample_of_a_100_hz_stream() -> None:

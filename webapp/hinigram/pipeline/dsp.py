@@ -214,21 +214,39 @@ def flat_seconds(x: np.ndarray, fs: float, floor_ratio: float = 0.25) -> float:
     A breath pause is not an absence of samples: the phase goes on wobbling with noise, at a
     fraction of the amplitude a breath produces. The threshold is relative to this window's own
     median envelope, so a quiet person with small breaths is not read as an apnea.
+
+    Three details keep the number honest. The envelope is taken from a deliberately wide
+    0.1-1.0 Hz band, because a narrow 0.2-0.5 Hz filter rings for seconds at each edge of a
+    pause and fills the pause with its own transient. The band is second order for the same
+    reason. And the run uses hysteresis — it starts at a quarter of the median envelope and only
+    ends at half — so a short dip is not counted as a pause and a real pause is not shortened by
+    its own edges.
     """
     values = np.asarray(x, dtype=np.float64)
+    if values.shape[0] < int(round(fs * 2)):
+        return 0.0
+    band = bandpass(values, fs, lo=0.1, hi=1.0, order=2)
     width = max(3, int(round(fs)))
-    envelope = _rolling_rms(values, width)
+    envelope = _rolling_rms(band, width)
     if envelope.size < 2:
         return 0.0
     median = float(np.median(envelope))
     if median <= 0:
         return 0.0
-    below = envelope < floor_ratio * median
-    longest = 0
+    enter = floor_ratio * median
+    leave = 0.5 * median
+    inside = False
     run = 0
-    for is_below in below:
-        run = run + 1 if is_below else 0
-        longest = max(longest, run)
+    longest = 0
+    for value in envelope:
+        if not inside and value < enter:
+            inside = True
+            run = 0
+        elif inside and value > leave:
+            inside = False
+        if inside:
+            run += 1
+            longest = max(longest, run)
     return float(longest / fs)
 
 

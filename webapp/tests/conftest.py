@@ -15,7 +15,8 @@ from fastapi.testclient import TestClient
 
 from hinigram.app import create_app
 from hinigram.config import Settings
-from hinigram.contracts import Frame
+from hinigram.contracts import Frame, Thresholds
+from hinigram.pipeline.analyze import Analysis
 from hinigram.pipeline.frames import Window
 
 #: Sample rate every synthetic signal in the suite is generated at.
@@ -103,6 +104,39 @@ def synth() -> Callable[..., np.ndarray]:
 
 
 @pytest.fixture
+def default_thresholds() -> Thresholds:
+    """The documented prototype thresholds, in the shape the rules consume."""
+    return Settings().thresholds()
+
+
+@pytest.fixture
+def analysis() -> Callable[..., Analysis]:
+    """An ``Analysis`` with plausible defaults; tests override only the field under test."""
+
+    def factory(**overrides: object) -> Analysis:
+        values: dict[str, object] = {
+            "tx_used": "tx1",
+            "rr_bpm": 15.0,
+            "plv": 0.9,
+            "breaths": 7,
+            "motion_s": 0.0,
+            "flat_s": 0.0,
+            "amp_db": -20.0,
+            "usable_s": 30.0,
+            "banded": np.zeros(8, dtype=np.float64),
+            "t": np.arange(8, dtype=np.float64),
+            "phi_breath": np.zeros(8, dtype=np.float64),
+            "phi_osc": np.zeros(8, dtype=np.float64),
+            "locked": True,
+            "winding": 1.0,
+        }
+        values.update(overrides)
+        return Analysis(**values)  # type: ignore[arg-type]
+
+    return factory
+
+
+@pytest.fixture
 def fake_series() -> Callable[..., np.ndarray]:
     """One transmitter's phase series, optionally with a suppressed stretch (a breath pause)."""
 
@@ -136,6 +170,7 @@ def fake_window() -> Callable[..., Window]:
         *,
         seconds: float = 30.0,
         burst: tuple[float, float] | None = None,
+        flat: tuple[float, float] | None = None,
         noise: float = 0.02,
         seed: int = 0,
     ) -> Window:
@@ -148,6 +183,10 @@ def fake_window() -> Callable[..., Window]:
             rng = np.random.default_rng(seed + channel)
             phase[:, channel] = gain * respiration(15.0, seconds, noise=0.0, seed=seed + channel)
             phase[:, channel] += rng.normal(0.0, noise, n)
+            if flat is not None:
+                start = int(flat[0] * FS)
+                stop = int(flat[1] * FS)
+                phase[start:stop, channel] = rng.normal(0.0, noise, stop - start)
         if burst is not None:
             start = int(burst[0] * FS)
             stop = int(burst[1] * FS)
