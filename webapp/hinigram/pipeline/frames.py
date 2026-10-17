@@ -9,6 +9,7 @@ their own timestamps rather than queues with a separate clock.
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Any
 
@@ -122,6 +123,48 @@ class TxRing:
         if self._last_t is None or frame.t > self._last_t:
             self._last_t = frame.t
 
+    def push_many(self, frames: list[Frame]) -> None:
+        """Write a batch in at most two contiguous slices.
+
+        The simulator generates a whole session at once and the replay reads a whole fixture at
+        once; doing that one numpy assignment per frame is the slowest thing either of them does.
+        The result is identical to calling ``push`` in order.
+        """
+        if not frames:
+            return
+        width = max(len(frame.phase) for frame in frames)
+        self._widen(width)
+        count = len(frames)
+        if count >= self.capacity:
+            frames = frames[-self.capacity :]
+            count = self.capacity
+        timestamps = np.fromiter((frame.t for frame in frames), dtype=np.float64, count=count)
+        phases = np.array([frame.phase for frame in frames], dtype=np.float64)
+        amps = np.array([frame.amp for frame in frames], dtype=np.float64)
+        first = min(count, self.capacity - self._head)
+        self._write(self._head, first, timestamps, phases, amps)
+        if first < count:
+            self._write(0, count - first, timestamps[first:], phases[first:], amps[first:])
+        self._head = (self._head + count) % self.capacity
+        self._size = min(self._size + count, self.capacity)
+        self._total += count
+        newest = float(timestamps[-1])
+        if self._last_t is None or newest > self._last_t:
+            self._last_t = int(newest)
+
+    def _write(
+        self,
+        start: int,
+        count: int,
+        timestamps: np.ndarray,
+        phases: np.ndarray,
+        amps: np.ndarray,
+    ) -> None:
+        stop = start + count
+        self._t[start:stop] = timestamps[:count]
+        self._phase[start:stop, : phases.shape[1]] = phases[:count]
+        self._amp[start:stop, : amps.shape[1]] = amps[:count]
+
     def window(self, start_ms: float, end_ms: float) -> Window | None:
         """Frames with ``start_ms <= t <= end_ms``, or None when there are none."""
         if self._size == 0:
@@ -161,6 +204,15 @@ class FrameStore:
 
     def push(self, frame: Frame) -> None:
         self._rings[frame.tx].push(frame)
+
+    def push_many(self, frames: Iterable[Frame]) -> None:
+        """Write a batch, grouped by transmitter so each ring takes two slices."""
+        grouped: dict[str, list[Frame]] = {name: [] for name in TX_NAMES}
+        for frame in frames:
+            grouped[frame.tx].append(frame)
+        for name, group in grouped.items():
+            if group:
+                self._rings[name].push_many(group)
 
     def count_malformed(self) -> None:
         """Record a line the source could not parse; the reader keeps going."""

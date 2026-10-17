@@ -31,3 +31,22 @@ def test_the_source_is_named_before_javascript_runs(client: TestClient) -> None:
     body = client.get("/").text
     assert 'id="source-chip"' in body
     assert "SIM" in body
+
+
+def test_the_closed_page_leaks_no_plv_or_threshold(client: TestClient) -> None:
+    """AC-115: both live behind the collapsed staff fold, never in the shell."""
+    body = client.get("/").text.lower()
+    assert "plv" not in body
+    assert "0.60" not in body
+    assert "threshold" not in body
+
+
+def test_patient_copy_is_not_hard_coded_in_the_template(client: TestClient) -> None:
+    """The words come from Python, so a test can assert them and the kiosk cannot drift."""
+    body = client.get("/").text
+    assert "Stand on the mark" not in body
+    assert "Irregular breathing" not in body
+
+
+def test_the_panel_starts_in_a_neutral_loading_state(client: TestClient) -> None:
+    assert "Starting the station" in client.get("/").text

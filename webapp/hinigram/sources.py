@@ -156,33 +156,43 @@ def simulate_frames(
     Deterministic for a scenario and a seed: the same script runs on every occasion, which is
     what makes the demonstration reproducible and the tests exact. Noise is added *after* the
     per-transmitter gain, so the three nodes differ in signal-to-noise ratio, not only in scale.
+
+    Frames are constructed without pydantic validation: this function is the only producer, the
+    values are generated rather than parsed, and ten thousand validations per session would cost
+    more than the whole demonstration. ``test_a_generated_frame_validates`` pins the equivalence.
     """
     breathing, movement = waveform(scenario, n, fs, seed=seed)
     rng = np.random.default_rng((scenario.seed if seed is None else seed) + 1_000)
+    total = n * 3
+    noise = rng.normal(0.0, scenario.noise, (total, 3))
+    rssi_noise = rng.normal(0.0, 0.2, total)
+    amp_noise = rng.normal(0.0, 0.3, (total, 3))
+    names = ("tx1", "tx2", "tx3")
     frames: list[Frame] = []
+    row = 0
     for index in range(n):
         timestamp = start_ms + int(round(index * 1000.0 / fs))
-        for channel, name in enumerate(("tx1", "tx2", "tx3")):
+        for channel, name in enumerate(names):
             gain = scenario.gains[channel]
-            noise = rng.normal(0.0, scenario.noise, 3)
             phase = [
                 gain * (0.9 + 0.1 * subcarrier) * breathing[index]
                 + 0.5 * movement[index]
-                + float(noise[subcarrier])
+                + float(noise[row, subcarrier])
                 for subcarrier in range(3)
             ]
             frames.append(
-                Frame(
+                Frame.model_construct(
                     v=1,
                     t=timestamp,
-                    tx=name,  # type: ignore[arg-type]
+                    tx=name,
                     ch=3,
                     seq=index,
-                    rssi=-42.5 - 3.0 * channel + float(rng.normal(0.0, 0.2)),
-                    amp=[-20.0 - 3.0 * channel + float(rng.normal(0.0, 0.3)) for _ in range(3)],
+                    rssi=-42.5 - 3.0 * channel + float(rssi_noise[row]),
+                    amp=[-20.0 - 3.0 * channel + float(amp_noise[row, s]) for s in range(3)],
                     phase=phase,
                 )
             )
+            row += 1
     return frames
 
 
@@ -273,8 +283,7 @@ class SimulatorSource:
                         self._index = max(0, want - int(EMIT_INTERVAL_S * self.fs))
                     if want > self._index:
                         stop = min(want, len(frames) // 3)
-                        for frame in frames[self._index * 3 : stop * 3]:
-                            store.push(frame)
+                        self._store.push_many(frames[self._index * 3 : stop * 3])  # type: ignore[union-attr]
                         self._index = stop
             time.sleep(EMIT_INTERVAL_S)
 

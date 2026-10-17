@@ -23,9 +23,10 @@
   "unsteady": {
     "label": "Very irregular intervals around 22 per minute",
     "rr_bpm": 22.0,
-    "cv": 0.40,
+    "cv": 0.50,
     "noise": 0.02,
-    "gains": [0.35, 0.18, 0.08]
+    "gains": [0.35, 0.18, 0.08],
+    "seed": 3
   },
   "apnea": {
     "label": "Regular breathing with a twelve-second pause",

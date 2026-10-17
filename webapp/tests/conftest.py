@@ -215,8 +215,7 @@ def analyse_scenario() -> Callable[[str], Analysis]:
     def factory(name: str, settle_s: float = 3.0, capture_s: float = 30.0) -> Analysis:
         store = FrameStore()
         total_ms = int((settle_s + capture_s) * FS) + 1
-        for frame in cached_frames(name, 0, total_ms):
-            store.push(frame)
+        store.push_many(list(cached_frames(name, 0, total_ms)))
         windows = store.window(settle_s * 1000.0, (settle_s + capture_s) * 1000.0)
         result = analyze_window(windows, Settings().thresholds())
         assert result is not None, f"scenario {name!r} produced no usable analysis"
@@ -250,8 +249,7 @@ class ScriptedSource:
         self.started_at = at_ms
         assert self.store is not None
         total = int(round((33.0 + 2.0) * FS))
-        for frame in cached_frames(self.scenario, at_ms, total):
-            self.store.push(frame)
+        self.store.push_many(list(cached_frames(self.scenario, at_ms, total)))
 
     def set_scenario(self, name: str) -> None:
         self.scenario = name

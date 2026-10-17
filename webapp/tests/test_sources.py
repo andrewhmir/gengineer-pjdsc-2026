@@ -56,6 +56,12 @@ def test_frames_cover_three_transmitters_and_three_subcarriers() -> None:
     assert [frame.t for frame in frames if frame.tx == "tx1"][:3] == [0, 10, 20]
 
 
+def test_a_generated_frame_validates() -> None:
+    """``simulate_frames`` skips validation for speed; the contract must still accept its output."""
+    frame = simulate_frames(load_scenarios()["regular"], start_ms=0, n=2)[0]
+    assert Frame.model_validate(frame.model_dump()) == frame
+
+
 def test_the_receiver_is_quieter_than_the_nearest_transmitter() -> None:
     """The three nodes differ in signal strength, which is what best-transmitter selection reads."""
     frames = simulate_frames(load_scenarios()["regular"], start_ms=0, n=200)
@@ -107,8 +113,7 @@ def test_an_empty_zone_is_not_a_measurement() -> None:
     """No respiratory modulation means no reading at all — not a regular one (REQ-122)."""
     scenario = load_scenarios()["absent"]
     store = FrameStore()
-    for frame in simulate_frames(scenario, 0, 3301):
-        store.push(frame)
+    store.push_many(simulate_frames(scenario, 0, 3301))
     windows = store.window(3000.0, 33000.0)
     assert analyze_window(windows, Settings().thresholds()) is None
 
@@ -168,8 +173,7 @@ def test_the_replay_fixture_is_small_enough_to_commit() -> None:
 
 def test_the_replay_fixture_reaches_a_regular_result() -> None:
     store = FrameStore()
-    for frame in replay_frames():
-        store.push(frame)
+    store.push_many(list(replay_frames()))
     thresholds = Settings().thresholds()
     analysis = analyze_window(store.window(3000.0, 33000.0), thresholds)
     assert analysis is not None
