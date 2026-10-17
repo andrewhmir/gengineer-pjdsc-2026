@@ -6,6 +6,7 @@ whole station, one Start, and a 409 rather than a second session.
 
 from __future__ import annotations
 
+import pytest
 from fastapi.testclient import TestClient
 
 from tests.helpers import FakeClock
@@ -58,10 +59,21 @@ def test_the_whole_flow_over_http(client: TestClient, clock: FakeClock) -> None:
 
 
 def test_a_second_start_is_refused(client: TestClient) -> None:
+    """A second tab cannot begin its own session while one is running."""
     assert client.post("/api/v1/session").status_code == 200
     second = client.post("/api/v1/session")
     assert second.status_code == 409
     assert "not idle" in second.json()["detail"]
+
+
+def test_a_refresh_rejoins_the_running_session(client: TestClient, clock: FakeClock) -> None:
+    """Reloading the page mid-measure must show the same session, not a new one."""
+    started = client.post("/api/v1/session").json()
+    clock.advance(5_000)
+    reconnected = client.get("/api/v1/session").json()
+    assert reconnected["id"] == started["id"]
+    assert reconnected["state"] == "measuring"
+    assert reconnected["elapsed_ms"] == pytest.approx(5_000, abs=50)
 
 
 def test_done_before_a_result_is_refused(client: TestClient) -> None:

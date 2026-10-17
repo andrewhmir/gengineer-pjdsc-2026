@@ -179,10 +179,23 @@ class Station:
 
     # -- measurement ------------------------------------------------------------------
 
-    def _window_analysis(self, start_ms: float, end_ms: float) -> Analysis | None:
+    def _window_analysis(
+        self,
+        start_ms: float,
+        end_ms: float,
+        expected_end_ms: float | None = None,
+    ) -> Analysis | None:
+        """Measure a window, or None when the frames that window needs never arrived.
+
+        The staleness check compares the last frame against the moment the window *should* have
+        ended, not against the wall clock. A laptop that suspends during the capture wakes up
+        with a window whose frames stop early, and that must read as unclear rather than as a
+        rate computed from fewer seconds than the result claims.
+        """
         counters = self.store.counters()
         last = counters.last_t
-        if last is None or (end_ms - last) > STALE_MS:
+        expected = end_ms if expected_end_ms is None else expected_end_ms
+        if last is None or (expected - last) > STALE_MS:
             return None
         return analyze_window(self.store.window(start_ms, end_ms), self.settings.thresholds())
 
@@ -218,7 +231,9 @@ class Station:
         self._quality = "low" if analysis.motion_s > 0.5 else "ok"
 
     def _finish_capture(self, now: int) -> None:
-        analysis = self._window_analysis(self._capture_start, self._capture_end)
+        analysis = self._window_analysis(
+            self._capture_start, self._capture_end, expected_end_ms=self._capture_end
+        )
         measured = analysis if analysis is not None else NO_MEASUREMENT
         self._analysis = analysis
         self._result = decide(measured, self.settings.thresholds())

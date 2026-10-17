@@ -234,8 +234,9 @@ class ScriptedSource:
 
     name = "sim"
 
-    def __init__(self, scenario: str) -> None:
+    def __init__(self, scenario: str, seconds: float = 35.0) -> None:
         self.scenario = scenario
+        self.seconds = seconds
         self.store: FrameStore | None = None
         self.started_at: int | None = None
 
@@ -248,7 +249,7 @@ class ScriptedSource:
     def on_session_start(self, at_ms: int) -> None:
         self.started_at = at_ms
         assert self.store is not None
-        total = int(round((33.0 + 2.0) * FS))
+        total = int(round(self.seconds * FS))
         self.store.push_many(list(cached_frames(self.scenario, at_ms, total)))
 
     def set_scenario(self, name: str) -> None:
@@ -266,12 +267,12 @@ def make_station(
 ) -> Callable[..., object]:
     """A station wired to a scripted source and a hand-moved clock."""
 
-    def factory(scenario: str = "regular", **overrides: object) -> object:
+    def factory(scenario: str = "regular", seconds: float = 35.0, **overrides: object) -> object:
         from hinigram.station import Station
 
         settings = settings_factory(**overrides)
         store = FrameStore()
-        source = ScriptedSource(scenario)
+        source = ScriptedSource(scenario, seconds=seconds)
         source.start(store)
         station = Station(store, settings, clock=clock.now, source=source)
         return station

@@ -6,6 +6,7 @@ milliseconds and the transition that is being tested is the only thing that happ
 
 from __future__ import annotations
 
+import time
 from collections.abc import Callable
 
 import pytest
@@ -179,3 +180,35 @@ def test_the_stage_label_and_chip_follow_the_state(station: Station, clock: Fake
     measuring = station.snapshot()
     assert measuring.stage_label == "Measuring · stand still"
     assert measuring.chip is not None
+
+
+def test_a_capture_that_lost_its_frames_is_unclear(
+    make_station: Callable[..., Station], clock: FakeClock
+) -> None:
+    """If the source went quiet two thirds of the way through, the rate is not trustworthy."""
+    truncated = make_station(scenario="regular", seconds=20.0)
+    truncated.start()
+    clock.advance(33_500)
+    truncated.tick()
+    result = truncated.snapshot().result
+    assert result is not None
+    assert result.outcome == "unclear"
+    assert result.rule == "low_quality"
+
+
+def test_a_delay_after_the_capture_is_not_missing_data(station: Station, clock: FakeClock) -> None:
+    """A laptop that slept *after* the capture still has a complete window to measure."""
+    station.start()
+    clock.advance(600_000)
+    station.tick()
+    result = station.snapshot().result
+    assert result is not None
+    assert result.outcome == "regular"
+
+
+def test_evaluation_is_under_four_hundred_milliseconds(station: Station, clock: FakeClock) -> None:
+    station.start()
+    clock.advance(33_500)
+    started = time.perf_counter()
+    station.tick()
+    assert time.perf_counter() - started < 0.4
