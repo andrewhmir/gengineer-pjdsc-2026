@@ -69,6 +69,7 @@ class Settings(BaseSettings):
             motion_max_s=self.motion_max_s,
             min_breaths=self.min_breaths,
             amp_floor_db=self.amp_floor_db,
+            presence_snr=self.presence_snr,
         )
 
     @property

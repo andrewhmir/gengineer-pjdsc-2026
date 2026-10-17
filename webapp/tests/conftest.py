@@ -16,8 +16,9 @@ from fastapi.testclient import TestClient
 from hinigram.app import create_app
 from hinigram.config import Settings
 from hinigram.contracts import Frame, Thresholds
-from hinigram.pipeline.analyze import Analysis
-from hinigram.pipeline.frames import Window
+from hinigram.pipeline.analyze import Analysis, analyze_window
+from hinigram.pipeline.frames import FrameStore, Window
+from hinigram.sources import load_scenarios, simulate_frames
 
 #: Sample rate every synthetic signal in the suite is generated at.
 FS = 100.0
@@ -193,6 +194,28 @@ def fake_window() -> Callable[..., Window]:
             phase[start:stop] += 0.6 * np.sin(2 * np.pi * 6.0 * t[start:stop])[:, None]
         amp = np.full((n, 3), -20.0)
         return Window(t=t * 1000.0, phase=phase, amp=amp, fs=FS)
+
+    return factory
+
+
+@pytest.fixture
+def analyse_scenario() -> Callable[[str], Analysis]:
+    """Run one scripted scenario through the real pipeline and return its analysis.
+
+    The window is exactly the capture window of a real session — settle is 3 s, capture 30 s —
+    so a scenario's outcome here is the outcome the station would show.
+    """
+
+    def factory(name: str, settle_s: float = 3.0, capture_s: float = 30.0) -> Analysis:
+        scenario = load_scenarios()[name]
+        store = FrameStore()
+        total_ms = int((settle_s + capture_s) * FS) + 1
+        for frame in simulate_frames(scenario, 0, total_ms):
+            store.push(frame)
+        windows = store.window(settle_s * 1000.0, (settle_s + capture_s) * 1000.0)
+        result = analyze_window(windows, Settings().thresholds())
+        assert result is not None, f"scenario {name!r} produced no usable analysis"
+        return result
 
     return factory
 

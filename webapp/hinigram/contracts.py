@@ -81,6 +81,7 @@ class Thresholds(BaseModel):
     motion_max_s: float
     min_breaths: int
     amp_floor_db: float
+    presence_snr: float
 
 
 class Health(BaseModel):

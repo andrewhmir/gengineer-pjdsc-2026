@@ -20,7 +20,6 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from hinigram.pipeline import dsp
 from hinigram.pipeline.dsp import hilbert_phase
 
 
@@ -139,22 +138,22 @@ def winding(phi_breath: np.ndarray, phi_osc: np.ndarray, breaths: int) -> float:
 def phase_locking(x: np.ndarray, fs: float) -> Locking:
     """Everything the detector needs from one bandpassed window, in one call.
 
-    ``x`` is expected to be bandpassed already; the phase is taken from its analytic signal, and
-    the rate and breath count come from the same estimator the outcome rules use, so the phase
-    and the number always describe the same window.
+    ``x`` is expected to be bandpassed already. The rate comes from the least-squares slope of
+    the breath phase — the *mean* rate over the window — rather than from a spectral peak,
+    because an irregular rhythm broadens its spectrum and pulls a peak-based estimate low. The
+    breath count still comes from zero crossings, so the number and the phase describe the same
+    window.
     """
     values = np.asarray(x, dtype=np.float64)
     phi_breath = analytic_phase(values)
-    phi_osc, _omega = reference_phase(phi_breath, fs)
-    try:
-        rr_bpm, breaths = dsp.estimate_rr(values, fs)
-    except ValueError:
-        rr_bpm, breaths = None, 0
+    phi_osc, omega = reference_phase(phi_breath, fs)
+    crossings = int(np.sum((values[:-1] <= 0) & (values[1:] > 0))) if values.shape[0] > 1 else 0
+    rr_bpm = float(omega * 60.0 / (2.0 * math.pi)) if omega > 0 else None
     return Locking(
         plv=plv(phi_breath, phi_osc),
-        winding=winding(phi_breath, phi_osc, breaths),
+        winding=winding(phi_breath, phi_osc, crossings),
         phi_breath=phi_breath,
         phi_osc=phi_osc,
         rr_bpm=rr_bpm,
-        breaths=breaths,
+        breaths=crossings,
     )

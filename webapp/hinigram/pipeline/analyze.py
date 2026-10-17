@@ -58,8 +58,12 @@ def analyze_window(
     chosen = dsp.best_transmitter(windows)
     if chosen is None:
         return None
-    name, banded, _snr = chosen
+    name, banded, snr = chosen
     window = windows[name]
+    if snr < thresholds.presence_snr:
+        # Noise only: nobody is breathing in the zone. Reporting a rate here is the failure mode
+        # the presence gate exists to prevent, so the window is refused rather than measured.
+        return None
     duration_s = float((window.t[-1] - window.t[0]) / 1000.0)
     if duration_s < MIN_USABLE_S:
         return None
