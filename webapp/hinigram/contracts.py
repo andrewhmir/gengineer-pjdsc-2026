@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 #: The three frame sources a station can run from. ``serial`` means real hardware; the chip in
 #: the kiosk header renders this as LIVE/REPLAY/SIM so simulated data never looks live (REQ-103).
@@ -27,14 +27,16 @@ FRAME_VERSION = 1
 class Frame(BaseModel):
     """One CSI frame from the receiver, as JSON Lines.
 
-    ``ch`` is the receiver's own channel count and is recorded, not trusted: ``amp`` and
-    ``phase`` are the subcarrier vectors the detector uses, and they must be non-empty and the
-    same length. An unknown ``v`` is rejected rather than coerced.
+    ``v`` is required: a frame that does not say which version it is cannot be read safely, and
+    the version field is the only defence against a firmware that changes the payload shape. A
+    frame missing ``v``, ``t`` or ``tx`` is malformed and never reaches the detector. ``ch`` is
+    the receiver's own channel count and is recorded, not trusted: ``amp`` and ``phase`` are the
+    subcarrier vectors the detector uses, and they must be non-empty and the same length.
     """
 
     model_config = ConfigDict(frozen=True)
 
-    v: int = FRAME_VERSION
+    v: int
     t: int
     tx: TxName
     ch: int
@@ -50,16 +52,18 @@ class Frame(BaseModel):
             raise ValueError(f"unsupported frame version {value}")
         return value
 
-    @field_validator("amp")
-    @classmethod
-    def _amp_matches_phase(cls, value: list[float], info: object) -> list[float]:
-        data = getattr(info, "data", {})
-        phase = data.get("phase")
-        if not value:
-            raise ValueError("amp must not be empty")
-        if phase is not None and len(phase) != len(value):
+    @model_validator(mode="after")
+    def _subcarriers_align(self) -> Frame:
+        """Cross-field check, run after every field exists — a field validator cannot see ``phase``.
+
+        A length mismatch here would reach the ring buffer's numpy write and raise inside the
+        source thread, which is the one place an exception has nowhere to go.
+        """
+        if not self.amp or not self.phase:
+            raise ValueError("amp and phase must not be empty")
+        if len(self.amp) != len(self.phase):
             raise ValueError("amp and phase must describe the same subcarriers")
-        return value
+        return self
 
 
 class Thresholds(BaseModel):
@@ -82,6 +86,7 @@ class Thresholds(BaseModel):
     min_breaths: int
     amp_floor_db: float
     presence_snr: float
+    max_gap_s: float
 
 
 class Health(BaseModel):

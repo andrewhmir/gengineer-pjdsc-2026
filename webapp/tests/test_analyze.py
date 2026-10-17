@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
+import numpy as np
 import pytest
 
 from hinigram.contracts import Thresholds
@@ -69,3 +70,28 @@ def test_the_analysis_keeps_the_phases_the_trace_needs(
     assert result.phi_breath.shape == result.phi_osc.shape == result.banded.shape
     assert result.t.shape == result.banded.shape
     assert result.t[0] == pytest.approx(0.0)
+
+
+def test_a_gap_in_the_window_is_measured_as_missing_time(
+    fake_window: Callable[..., Window], default_thresholds: Thresholds
+) -> None:
+    """A dropout is missing *data*, not a shorter window: the two must be told apart."""
+    full = fake_window()
+    mask = np.ones(full.t.shape[0], dtype=bool)
+    mask[10 * 100 : 20 * 100] = False
+    holed = Window(t=full.t[mask], phase=full.phase[mask], amp=full.amp[mask], fs=full.fs)
+
+    result = analyze_window({"tx1": holed}, default_thresholds)
+    assert result is not None
+    assert result.gap_s == pytest.approx(10.0, abs=0.3)
+    assert result.usable_s == pytest.approx(20.0, abs=0.5)
+
+
+def test_an_intact_window_reports_no_gap(
+    fake_window: Callable[..., Window], default_thresholds: Thresholds
+) -> None:
+    result = analyze_window({"tx1": fake_window()}, default_thresholds)
+    assert result is not None
+    assert result.gap_s < 0.05
+    assert result.usable_s == pytest.approx(result.usable_s, abs=0.0)  # finite, not NaN
+    assert result.usable_s > 29.0

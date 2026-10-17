@@ -196,6 +196,33 @@ def test_a_capture_that_lost_its_frames_is_unclear(
     assert result.rule == "low_quality"
 
 
+def test_a_dropout_inside_the_capture_is_unclear(
+    make_station: Callable[..., Station], clock: FakeClock
+) -> None:
+    """A hole in the middle is the failure an ESP-NOW link will actually produce."""
+    holed = make_station(scenario="regular", hole=(10.0, 20.0))
+    holed.start()
+    clock.advance(33_500)
+    holed.tick()
+    result = holed.snapshot().result
+    assert result is not None
+    assert result.outcome == "unclear"
+    assert result.rule == "low_quality"
+
+
+def test_a_short_dropout_does_not_corrupt_the_result(
+    make_station: Callable[..., Station], clock: FakeClock
+) -> None:
+    """A fifth of a second is a dropped packet, not a lost measurement."""
+    almost = make_station(scenario="regular", hole=(12.0, 12.2))
+    almost.start()
+    clock.advance(33_500)
+    almost.tick()
+    result = almost.snapshot().result
+    assert result is not None
+    assert result.outcome == "regular"
+
+
 def test_a_delay_after_the_capture_is_not_missing_data(station: Station, clock: FakeClock) -> None:
     """A laptop that slept *after* the capture still has a complete window to measure."""
     station.start()

@@ -4,6 +4,10 @@
  * It holds no rule and no copy. Every number, every sentence and every chip comes from the
  * server payload, so the display cannot disagree with the measurement and the tests for both
  * live in Python. This file's only jobs are: request, render, and forward a button press.
+ *
+ * The panel is built once per state and updated in place afterwards. Replacing it on every poll
+ * destroyed keyboard focus every 250 ms, re-announced the whole panel to a screen reader four
+ * times a second, and closed the staff fold within a second of it being opened.
  */
 (function () {
   "use strict";
@@ -21,11 +25,14 @@
   var healthWord = document.getElementById("health-word");
   var healthDot = document.getElementById("health-dot");
   var sourceChip = document.getElementById("source-chip");
+  var announcer = document.getElementById("announcer");
 
   var session = null;
   var pollTimer = null;
   var healthTimer = null;
   var busy = false;
+  var renderedKey = "";
+  var refs = {};
 
   function make(tag, className, text) {
     var node = document.createElement(tag);
@@ -49,11 +56,14 @@
     return value && value.trim() ? value.trim() : fallback;
   }
 
-  function chipFrom(chip) {
-    var node = make("span", "chip " + chip.tone);
-    node.appendChild(make("i"));
-    node.appendChild(document.createTextNode(chip.text));
-    return node;
+  function stateKey(next) {
+    return (next.state || "") + ":" + (next.id || "");
+  }
+
+  function announce(text) {
+    if (announcer && text) {
+      announcer.textContent = text;
+    }
   }
 
   function stepsFrom(steps) {
@@ -79,34 +89,15 @@
     return grid;
   }
 
-  function staffFold(result, colour) {
-    var details = make("details", "staff");
-    details.appendChild(make("summary", null, "Details for staff"));
-    var body = make("div", "det");
-    var detail = result.details;
-    body.appendChild(
-      document.createTextNode(
-        "Phase-locking value " +
-          (detail.plv === null ? "—" : detail.plv.toFixed(2)) +
-          " against the " +
-          detail.plv_threshold.toFixed(2) +
-          " threshold · " +
-          detail.window_s.toFixed(1) +
-          " s window · " +
-          detail.breaths +
-          " breaths analysed"
-      )
-    );
-    var spark = make("canvas");
-    spark.id = "spark";
-    body.appendChild(spark);
-    details.appendChild(body);
-    details.addEventListener("toggle", function () {
-      if (details.open) {
-        drawTrace(spark, colour);
-      }
-    });
-    return details;
+  function chipInto(slot, chip) {
+    clear(slot);
+    if (!chip) {
+      return;
+    }
+    var node = make("span", "chip " + chip.tone);
+    node.appendChild(make("i"));
+    node.appendChild(document.createTextNode(chip.text));
+    slot.appendChild(node);
   }
 
   function drawTrace(canvas, colour) {
@@ -121,33 +112,110 @@
         window.Wave.draw(canvas, trace, colour);
       })
       .catch(function () {
-        var note = make("div", null, "trace unavailable");
-        if (canvas.parentNode) {
-          canvas.parentNode.appendChild(note);
+        if (canvas.parentNode && !canvas.parentNode.querySelector(".wave-missing")) {
+          canvas.parentNode.appendChild(make("div", "wave-missing", "trace unavailable"));
         }
       });
   }
 
-  function actionRow(kind, result) {
-    var row = make("div", "row");
-    var button = make("button", "btn");
-    button.type = "button";
-    if (kind === "start") {
-      button.textContent = "Start";
-      button.className = "btn";
-      button.addEventListener("click", start);
-    } else if (kind === "stop") {
-      button.textContent = "Stop";
-      button.className = "btn ghost";
-      button.addEventListener("click", stop);
-    } else {
-      var irregular = result && result.outcome === "irregular";
-      button.textContent = result && result.outcome === "unclear" ? "Try again" : "Done";
-      button.className = irregular ? "btn crit" : "btn";
-      button.addEventListener("click", done);
+  function staffFold(result) {
+    var details = make("details", "staff");
+    details.appendChild(make("summary", null, "Details for staff"));
+    var body = make("div", "det");
+    var detail = result.details;
+    body.appendChild(
+      document.createTextNode(
+        "Phase-locking value " +
+          (detail.plv === null ? "—" : detail.plv.toFixed(2)) +
+          " against the " +
+          detail.plv_threshold.toFixed(2) +
+          " threshold · " +
+          detail.window_s.toFixed(1) +
+          " s of data · " +
+          detail.breaths +
+          " breaths analysed"
+      )
+    );
+    var spark = make("canvas");
+    spark.id = "spark";
+    body.appendChild(spark);
+    details.appendChild(body);
+    details.addEventListener("toggle", function () {
+      if (details.open) {
+        drawTrace(spark, token("--accent", "#0d6e78"));
+      }
+    });
+    return details;
+  }
+
+  function buildPanel(next) {
+    clear(panel);
+    refs = {};
+    var result = next.result;
+    var kind =
+      next.state === "idle" ? "Screening station" : next.state === "result" ? "Result" : "Measuring";
+    panel.appendChild(make("div", "state-k", kind));
+    refs.heading = make("h1");
+    panel.appendChild(refs.heading);
+    refs.lede = make("p", "lede");
+    panel.appendChild(refs.lede);
+    if (next.state === "settle" || next.state === "measuring") {
+      refs.progress = make("div", "prog");
+      refs.bar = make("i");
+      refs.progress.appendChild(refs.bar);
+      panel.appendChild(refs.progress);
     }
-    row.appendChild(button);
-    return row;
+    refs.chipSlot = make("div", "chip-slot");
+    panel.appendChild(refs.chipSlot);
+    if (result) {
+      panel.appendChild(metricsFrom(result.metrics));
+    }
+    panel.appendChild(stepsFrom(next.steps));
+    if (result) {
+      panel.appendChild(staffFold(result));
+    }
+    refs.hint = make("p", "hint");
+    panel.appendChild(refs.hint);
+    refs.row = make("div", "row");
+    refs.button = make("button", "btn");
+    refs.button.type = "button";
+    refs.button.addEventListener("click", onAction);
+    refs.row.appendChild(refs.button);
+    panel.appendChild(refs.row);
+  }
+
+  function updatePanel(next) {
+    var result = next.result;
+    refs.heading.textContent = next.headline;
+    refs.heading.className =
+      next.state === "result" && result
+        ? result.outcome === "regular"
+          ? "ok"
+          : result.outcome === "unclear"
+            ? "warn"
+            : "crit"
+        : "";
+    refs.lede.textContent = next.lede || "";
+    if (refs.bar) {
+      refs.bar.style.width =
+        Math.round((next.elapsed_ms / (next.duration_ms || 1)) * 100) + "%";
+    }
+    chipInto(refs.chipSlot, next.chip);
+    refs.hint.textContent = next.hint || "";
+    refs.hint.className = next.hint ? "hint" : "hidden";
+    if (next.state === "idle") {
+      refs.action = "start";
+      refs.button.textContent = "Start";
+      refs.button.className = "btn";
+    } else if (next.state === "result") {
+      refs.action = "done";
+      refs.button.textContent = "Done";
+      refs.button.className = result && result.outcome === "irregular" ? "btn crit" : "btn";
+    } else {
+      refs.action = "stop";
+      refs.button.textContent = "Stop";
+      refs.button.className = "btn ghost";
+    }
   }
 
   function render(next) {
@@ -161,62 +229,42 @@
     if (!panel) {
       return;
     }
-    var keyword =
-      next.state === "idle"
-        ? "Screening station · Bay 1"
-        : next.state === "result"
-          ? "Result"
-          : "Measuring";
-    var result = next.result;
-    var colour =
-      result && result.outcome === "irregular"
-        ? token("--crit", "#b3261e")
-        : result && result.outcome === "unclear"
-          ? token("--warn", "#8f5600")
-          : token("--ok", "#0f7b4f");
-
-    clear(panel);
-    panel.appendChild(make("div", "state-k", keyword));
-    var heading = make("h1");
-    if (next.state === "result" && result) {
-      heading.className = result.outcome === "regular" ? "ok" : result.outcome === "unclear" ? "warn" : "crit";
+    var key = stateKey(next);
+    if (key !== renderedKey) {
+      var focused = document.activeElement && document.activeElement.dataset
+        ? document.activeElement.dataset.action
+        : null;
+      buildPanel(next);
+      renderedKey = key;
+      announce(
+        next.state === "result"
+          ? next.headline
+          : next.state === "measuring"
+            ? "Measuring. Stand still."
+            : next.state === "idle"
+              ? "Ready. Step onto the mark and press Start."
+              : "Checking that you are standing still."
+      );
+      if (focused) {
+        var target = panel.querySelector('[data-action="' + focused + '"]');
+        if (target) {
+          target.focus();
+        }
+      }
     }
-    heading.textContent = next.headline;
-    panel.appendChild(heading);
-    if (next.lede) {
-      panel.appendChild(make("p", "lede", next.lede));
+    updatePanel(next);
+    if (refs.button) {
+      refs.button.dataset.action = refs.action || "";
     }
+  }
 
-    if (next.state === "settle" || next.state === "measuring") {
-      var progress = make("div", "prog");
-      var bar = make("i");
-      bar.style.width = Math.round((next.elapsed_ms / (next.duration_ms || 1)) * 100) + "%";
-      progress.appendChild(bar);
-      panel.appendChild(progress);
-    }
-
-    if (next.chip) {
-      panel.appendChild(chipFrom(next.chip));
-    }
-
-    if (result) {
-      panel.appendChild(metricsFrom(result.metrics));
-      panel.appendChild(stepsFrom(next.steps));
-      panel.appendChild(staffFold(result, colour));
+  function onAction() {
+    if (refs.action === "start") {
+      start();
+    } else if (refs.action === "stop") {
+      post("/api/v1/session/stop");
     } else {
-      panel.appendChild(stepsFrom(next.steps));
-    }
-
-    if (next.hint) {
-      panel.appendChild(make("p", "hint", next.hint));
-    }
-
-    if (next.state === "idle") {
-      panel.appendChild(actionRow("start"));
-    } else if (next.state === "result") {
-      panel.appendChild(actionRow("done", result));
-    } else {
-      panel.appendChild(actionRow("stop"));
+      post("/api/v1/session/done");
     }
   }
 
@@ -267,13 +315,23 @@
       return;
     }
     busy = true;
+    if (refs.button) {
+      refs.button.disabled = true;
+    }
     fetch(path, { method: "POST", cache: "no-store" })
-      .then(function () {
+      .then(function (response) {
+        if (!response.ok) {
+          throw new Error("the station refused that request");
+        }
         busy = false;
         refresh();
       })
       .catch(function () {
         busy = false;
+        if (refs.button) {
+          refs.button.disabled = false;
+        }
+        announce("The station could not do that. Try again.");
         refresh();
       });
   }
@@ -281,18 +339,12 @@
   function start() {
     var scenario = new URLSearchParams(window.location.search).get("scenario");
     var path = "/api/v1/session";
-    if (scenario) {
+    // The demo control exists only on the simulator; sending it to a recording or a live
+    // receiver would be refused and the Start button would appear dead.
+    if (scenario && session && session.source === "sim") {
       path += "?scenario=" + encodeURIComponent(scenario);
     }
     post(path);
-  }
-
-  function stop() {
-    post("/api/v1/session/stop");
-  }
-
-  function done() {
-    post("/api/v1/session/done");
   }
 
   function health() {
@@ -350,5 +402,5 @@
     boot();
   }
 
-  window.Hinigram = { refresh: refresh, render: render, start: start, stop: stop, done: done };
+  window.Hinigram = { refresh: refresh, render: render, start: start };
 })();

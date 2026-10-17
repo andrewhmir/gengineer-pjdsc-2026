@@ -3,10 +3,16 @@
  *
  * It draws the trace the server measured — the bandpassed phase modulation — so a member of
  * staff looking at a flagged result sees the waveform that produced it. If there is no trace,
- * the canvas stays empty and the caller says so; nothing here invents a curve.
+ * the canvas stays empty and the caller says so; nothing here invents a curve. Colours are read
+ * from the stylesheet, so this file carries none of its own.
  */
 (function () {
   "use strict";
+
+  function token(name, fallback) {
+    var value = getComputedStyle(document.documentElement).getPropertyValue(name);
+    return value && value.trim() ? value.trim() : fallback;
+  }
 
   function fit(canvas) {
     var ratio = window.devicePixelRatio || 1;
@@ -34,7 +40,7 @@
     }
     var scale = peak > 0 ? (height * 0.38) / peak : 0;
     ctx.clearRect(0, 0, width, height);
-    ctx.strokeStyle = "rgba(134, 151, 169, 0.45)";
+    ctx.strokeStyle = token("--line", "#dfe6ee");
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(0, height / 2);
@@ -50,7 +56,7 @@
         ctx.moveTo(x, y);
       }
     }
-    ctx.strokeStyle = colour || "rgba(13, 110, 120, 0.9)";
+    ctx.strokeStyle = colour || token("--accent", "#0d6e78");
     ctx.lineWidth = 1.6;
     ctx.stroke();
   }

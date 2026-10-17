@@ -68,6 +68,7 @@ body {
 
 .top {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
 }
@@ -137,6 +138,13 @@ body {
   gap: 14px;
   flex: 1;
   min-height: 0;
+}
+
+/* Grid and flex children default to min-content; long copy then pushes the card past a phone
+ * viewport and takes the primary action off screen. */
+.wrap > *,
+.kiosk > * {
+  min-width: 0;
 }
 
 .card {
@@ -276,6 +284,15 @@ body {
   border-radius: 5px;
   background: var(--accent);
   transition: width 0.2s linear;
+}
+
+.chip-slot {
+  display: flex;
+  margin-top: 4px;
+}
+
+.chip-slot:empty {
+  display: none;
 }
 
 .chip {
@@ -477,6 +494,20 @@ body {
 
 .hidden {
   display: none;
+}
+
+/* The screen-reader announcement channel: one line, updated only when the station changes
+ * state, instead of a live region wrapped around the whole panel. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* ---------- disclaimer ---------- */

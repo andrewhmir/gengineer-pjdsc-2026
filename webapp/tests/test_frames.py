@@ -11,6 +11,7 @@ from __future__ import annotations
 from collections.abc import Callable
 
 import pytest
+from pydantic import ValidationError
 
 from hinigram.contracts import Frame
 from hinigram.pipeline.frames import FrameStore, parse_frame_line
@@ -36,10 +37,26 @@ def test_frame_roundtrips_through_the_parser() -> None:
         "",
         '{"v": 9, "t": 1, "tx": "tx1", "ch": 3, "seq": 0, "rssi": -40, "amp": [1], "phase": [0]}',
         b'{"v": 1, "t": 1, "tx": "tx4", "ch": 3, "seq": 0, "rssi": -40, "amp": [1], "phase": [0]}',
+        # A frame with no version at all: the design counts it malformed, and the version field
+        # is the mitigation for a firmware that changes the payload shape.
+        (
+            '{"t": 1, "tx": "tx1", "ch": 3, "seq": 0, "rssi": -40, '
+            '"amp": [1, 2, 3], "phase": [0, 0, 0]}'
+        ),
+        # amp and phase describe the same subcarriers; a mismatch would break the buffer write.
+        (
+            '{"v": 1, "t": 1, "tx": "tx1", "ch": 3, "seq": 0, "rssi": -40, '
+            '"amp": [1, 2, 3, 4], "phase": [0, 1]}'
+        ),
     ],
 )
 def test_malformed_lines_are_rejected(line: str | bytes) -> None:
     assert parse_frame_line(line) is None
+
+
+def test_a_frame_with_mismatched_subcarriers_cannot_be_built() -> None:
+    with pytest.raises(ValidationError):
+        Frame(v=1, t=1, tx="tx1", ch=3, seq=0, rssi=-40.0, amp=[1, 2, 3, 4], phase=[0, 1])
 
 
 def test_window_returns_only_frames_inside_the_range(

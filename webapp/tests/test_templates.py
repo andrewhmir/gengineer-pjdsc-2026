@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 from fastapi.testclient import TestClient
 
 
@@ -85,3 +87,34 @@ def test_the_three_scripts_are_served(client: TestClient) -> None:
         response = client.get("/static/js/" + script)
         assert response.status_code == 200
         assert response.text.strip()
+
+
+def test_the_panel_is_rebuilt_only_when_the_state_changes(client: TestClient) -> None:
+    """Rebuilding the panel on every poll destroyed focus and closed the staff fold."""
+    script = client.get("/static/js/app.js").text
+    assert "renderedKey" in script
+    assert "stateKey" in script
+    assert "dataset.action" in script
+
+
+def test_the_demo_scenario_is_only_sent_to_the_simulator(client: TestClient) -> None:
+    """A scenario on a replay or a live receiver would be refused and Start would look dead."""
+    script = client.get("/static/js/app.js").text
+    assert 'session.source === "sim"' in script
+
+
+def test_the_client_surfaces_a_refused_request(client: TestClient) -> None:
+    script = client.get("/static/js/app.js").text
+    assert "response.ok" in script
+    assert "could not do that" in script
+
+
+def test_the_screen_reader_announcement_is_a_single_line(client: TestClient) -> None:
+    """A polite live region around the whole panel re-announces a countdown four times a second."""
+    body = client.get("/").text
+    announcer = re.search(r'<p[^>]*id="announcer"[^>]*>', body)
+    assert announcer is not None
+    assert 'aria-live="polite"' in announcer.group(0)
+    panel = re.search(r'<div[^>]*id="panel"[^>]*>', body)
+    assert panel is not None
+    assert "aria-live" not in panel.group(0)

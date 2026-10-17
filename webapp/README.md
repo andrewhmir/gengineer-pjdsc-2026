@@ -34,7 +34,7 @@ Commands:
 | `cd webapp && uv run hinigram` | Serve the station on `127.0.0.1:8765` from the simulator. |
 | `cd webapp && uv run hinigram --source replay` | Serve from the committed synthetic replay fixture. |
 | `cd webapp && uv run hinigram --source serial --serial-port COM5` | Serve real frames from the receiver node. |
-| `cd webapp && uv run pytest` | The lane suite: offline, deterministic, under 15 s. |
+| `cd webapp && uv run pytest` | The lane suite: offline, deterministic, typically ten to fifteen seconds. |
 | `cd webapp && uv run ruff check .` | Lint. |
 | `cd webapp && uv run mypy` | Type-check the package. |
 
@@ -52,15 +52,18 @@ uv run pytest
 The simulator plays one scripted scenario per session. Choose it with the `scenario` query
 parameter, or set the default with `--scenario`:
 
-| Scenario | What the station shows |
-|---|---|
-| `regular` | Breathing looks regular · 15 br/min, steady |
-| `watch` | Breathing looks regular · 22 br/min, worth a mention to staff |
-| `tachypnea` | Irregular breathing · 26.4 br/min, flagged |
-| `unsteady` | Irregular breathing · 16 br/min, unsteady rhythm |
-| `apnea` | Irregular breathing · a breath pause of ten seconds or more |
-| `motion` | Reading not clear · movement during the capture |
-| `absent` | Settle finds no one breathing and returns to idle |
+| Scenario | Scripted | What the station shows |
+|---|---|---|
+| `regular` | 15 br/min, steady | Breathing looks regular · 15.1 br/min, Steady |
+| `watch` | 22 br/min, steady | Breathing looks regular · about 21.7 br/min, Steady, worth a mention to staff |
+| `tachypnea` | 28 br/min, irregular intervals | Irregular breathing · about 27.2 br/min, Unsteady, flagged |
+| `unsteady` | 22 br/min, very irregular intervals | Irregular breathing · about 20.5 br/min, Unsteady, flagged |
+| `apnea` | 22 br/min with a twelve-second pause | Irregular breathing · the pause measures about 10.2 s of flat signal |
+| `motion` | 15 br/min with a four-second movement | Reading not clear · no rate published, Try again |
+| `absent` | noise only | Settle finds no one breathing and returns to idle |
+
+The scripted and shown rates differ slightly on purpose: the shown number is what the detector
+measured from that script, and it is the detector's answer that the station reports.
 
 Open `http://127.0.0.1:8765/?scenario=tachypnea`, press Start, and the station produces a flagged
 result after the capture. The parameter only changes what the simulator emits; it is ignored on
@@ -81,13 +84,16 @@ the node nearest the person; bandpasses 0.2–0.5 Hz, unwraps the phase, and red
 subcarriers to one series; estimates the rate from the slope of the breath phase and the rhythm
 from a phase-locking value against an oscillator locked to that window's own rate; then applies
 the published rule table and refuses to publish a number when the signal is too weak, too short,
-too noisy, or interrupted.
+too noisy, interrupted, or **missing more than a second of frames anywhere inside the capture**.
+The staff fold reports the seconds of data the window actually contains, not the window's span.
 
-Two measurements depart from the design record's wording, and both are argued in
-[`../specs/2026-10-17-webapp-kiosk-plan.md`](../specs/2026-10-17-webapp-kiosk-plan.md) (§*Known
-deviations*): the phase-locking value measures phase diffusion rather than filter lag, because a
-driven oscillator reads about 0.9 for any input, and the rate comes from the phase slope rather
-than a spectral peak, because an irregular rhythm pulls a peak estimate low.
+The build plan records every place where the implementation departs from the design record, with
+the measurement behind each, in
+[`../specs/2026-10-17-webapp-kiosk-plan.md`](../specs/2026-10-17-webapp-kiosk-plan.md) under
+*Known deviations*. The two a reader should know before trusting a result: the phase-locking
+value measures phase diffusion rather than filter lag, because a driven oscillator reads about
+0.9 for any input; and the rate comes from the phase slope rather than a spectral peak, because
+an irregular rhythm pulls a peak estimate low.
 
 ## Honest limits
 

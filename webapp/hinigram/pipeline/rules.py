@@ -63,7 +63,7 @@ IDLE_LEDE = (
 )
 IDLE_HINT = "Nothing is measured or stored until you press Start."
 MEASURING_LEDE = "Stay still and breathe normally."
-MEASURING_HINT = "If you move, the reading may restart."
+MEASURING_HINT = "If you move, the reading may not be clear."
 
 
 def patient_copy(outcome: Outcome, advice: Advice) -> tuple[str, str]:
@@ -117,6 +117,7 @@ def decide(analysis: Analysis, thresholds: Thresholds) -> Result:
         analysis.motion_s > thresholds.motion_max_s
         or analysis.breaths < thresholds.min_breaths
         or analysis.amp_db < thresholds.amp_floor_db
+        or analysis.gap_s > thresholds.max_gap_s
         or plv is None
     ):
         outcome: Outcome = "unclear"
@@ -125,7 +126,11 @@ def decide(analysis: Analysis, thresholds: Thresholds) -> Result:
         outcome, rule = "irregular", "apnea"
     elif rr is not None and rr > thresholds.rr_max and plv < thresholds.plv_min:
         outcome, rule = "irregular", "tachypnea"
-    elif plv < thresholds.plv_unsteady:
+    elif (
+        plv < thresholds.plv_unsteady
+        and rr is not None
+        and thresholds.rr_min <= rr <= thresholds.rr_max
+    ):
         outcome, rule = "irregular", "unsteady"
     elif _in_regular_band(rr, plv, thresholds) or _regular_but_watchful(rr, plv, thresholds):
         outcome, rule = "regular", "none"
@@ -135,6 +140,11 @@ def decide(analysis: Analysis, thresholds: Thresholds) -> Result:
     # A weak estimate never becomes a clinical outcome, whichever branch produced it.
     if confidence != "high" and outcome != "unclear":
         outcome, rule = "unclear", "low_quality"
+
+    # Conversely, a result the quality gate refused is not a high-confidence reading: the staff
+    # fold must not print "high" beside a screen that says the reading is not clear (M12).
+    if outcome == "unclear" and rule == "low_quality" and confidence == "high":
+        confidence = "low"
 
     advice = _advice_for(outcome, rr, plv, thresholds)
     headline, lede = patient_copy(outcome, advice)

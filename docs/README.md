@@ -33,7 +33,6 @@ documents; they point at them.
 ## `specs/` — frozen design records
 
 `specs/` holds the design documents this repository was built from, kept **as approved**.
-`specs/` holds the design documents this repository was built from, kept **as approved**.
 It has no index file; these are the four documents in it:
 
 | Document | Contents |

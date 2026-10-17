@@ -49,3 +49,21 @@ def test_the_stylesheet_defines_every_colour_it_uses() -> None:
 
 def test_motion_is_disabled_on_request() -> None:
     assert "prefers-reduced-motion" in CSS
+
+
+def test_the_scene_canvas_fills_its_card_at_any_width() -> None:
+    """Regression: the canvas resolved to zero height in the stacked layout and drew nothing."""
+    block = re.search(r"\.stage canvas\s*\{([^}]*)\}", CSS, re.S)
+    assert block is not None, "no canvas rule"
+    assert re.search(r"position:\s*absolute", block.group(1))
+    assert re.search(r"inset:\s*0", block.group(1))
+
+
+def test_grid_children_may_shrink_below_their_content() -> None:
+    """Without min-width: 0 the cards push past a phone viewport and clip the primary action."""
+    assert re.search(r"\.wrap\s*>\s*\*\s*,\s*\n?\.kiosk\s*>\s*\*\s*\{[^}]*min-width:\s*0", CSS)
+
+
+def test_the_announcement_channel_is_hidden_visually() -> None:
+    assert ".visually-hidden" in CSS
+    assert re.search(r"\.visually-hidden\s*\{[^}]*clip:", CSS, re.S)

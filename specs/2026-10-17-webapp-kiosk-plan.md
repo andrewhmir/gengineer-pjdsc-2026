@@ -779,17 +779,20 @@ window. `motion` adds `amp * sin(2π * 6 Hz * t)` into the phase inside its wind
 scenario's timings are **seconds from session Start** (`on_session_start` resets the counter),
 so the capture window lines up with the scripted event.
 
-`fixtures/scenarios.json` (values are the starting point; Task 6 Step 4 tunes `jitter`):
+`fixtures/scenarios.json` — the values the plan proposed, then what the build actually ships.
+The variability turned out to be the wrong knob (see deviation 6: a smooth frequency wobble
+never lets the phase slip), so it was replaced by a breath-to-breath interval coefficient of
+variation, and the numbers were re-tuned against measurement:
 
-| name | rr_bpm | jitter | apnea | motion | expected |
+| name | rr_bpm (proposed → shipped) | variability (proposed → shipped) | apnea | motion | expected |
 |---|---|---|---|---|---|
-| regular | 15.0 | 0.010 | — | — | regular / none |
-| watch | 22.0 | 0.020 | — | — | regular / none, advice watch |
-| tachypnea | 26.4 | 0.060 | — | — | irregular / tachypnea |
-| unsteady | 16.0 | 0.045 | — | — | irregular / unsteady |
-| apnea | 15.0 | 0.010 | 10–24 s | — | irregular / apnea |
-| motion | 15.0 | 0.010 | — | 7–11 s | unclear / low_quality |
-| absent | 15.0 | 0.010 | 0–33 s (gains 0.0) | — | no respiratory signal: settle returns to idle |
+| regular | 15.0 → 15.0 | jitter 0.010 → cv 0.02 | — | — | regular / none |
+| watch | 22.0 → 22.0 | jitter 0.020 → cv 0.05 | — | — | regular / none, advice watch |
+| tachypnea | 26.4 → 28.0 | jitter 0.060 → cv 0.22 | — | — | irregular / tachypnea |
+| unsteady | 16.0 → 22.0 | jitter 0.045 → cv 0.50, seed 3 | — | — | irregular / unsteady |
+| apnea | 15.0 → 22.0 | jitter 0.010 → cv 0.02 | 10–22 s | — | irregular / apnea |
+| motion | 15.0 → 15.0 | jitter 0.010 → cv 0.02 | — | 7–11 s | unclear / low_quality |
+| absent | 15.0 → 15.0 | jitter 0.010 → cv 0.02 | 0–33 s (gains 0.0) | — | no respiratory signal: settle returns to idle |
 
 - [ ] **Step 4: Add the end-to-end scenario test and tune `jitter` until it passes**
 
@@ -1538,3 +1541,11 @@ while the manifest half is here, REQ-120 (torus from staff details).
    did not: every frame landed decades outside the window being measured, which read as an empty
    zone and sent the station back to idle. `hinigram/clock.py` is the single source, and two
    regression tests pin the plumbing.
+10. **A capture with a hole in it is not a measurement.** The plan's staleness check covered only
+    the right edge of the window, so a dropout in the middle was analysed as if the phase were
+    continuous: a ten-second hole still produced `regular`, `confidence: high`, and a staff fold
+    that said "30.0 s window". `analyze.compute` now reports the longest gap and the seconds of
+    data the window actually holds; a gap above `max_gap_s` (one second) is a `low_quality` gate,
+    and `usable_s` is covered time rather than span. The consequence for the plan's own test is
+    deliberate: a laptop that sleeps *after* a complete capture still reports its result, while a
+    capture that lost frames must not — the former is a delay, the latter is missing data.

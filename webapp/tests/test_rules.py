@@ -69,6 +69,42 @@ def test_unsteady_needs_plv_below_four_tenths(
     assert (unsteady.outcome, unsteady.rule) == ("irregular", "unsteady")
 
 
+def test_unsteady_needs_the_rate_in_band(
+    analysis: Callable[..., Analysis], default_thresholds: Thresholds
+) -> None:
+    """The design's row 4 is 'PLV below 0.40 *with RR in band*'; a slow wander is not unsteady."""
+    slow = decide(analysis(rr_bpm=5.0, plv=0.30), default_thresholds)
+    assert (slow.outcome, slow.rule) == ("unclear", "low_quality")
+    missing = decide(analysis(rr_bpm=None, plv=0.30), default_thresholds)
+    assert missing.outcome == "unclear"
+    in_band = decide(analysis(rr_bpm=16.0, plv=0.30), default_thresholds)
+    assert (in_band.outcome, in_band.rule) == ("irregular", "unsteady")
+
+
+def test_a_gap_in_the_capture_forces_unclear(
+    analysis: Callable[..., Analysis], default_thresholds: Thresholds
+) -> None:
+    """One second of missing frames is missing measurement, not a slightly shorter window."""
+    result = decide(analysis(gap_s=10.0), default_thresholds)
+    assert (result.outcome, result.rule) == ("unclear", "low_quality")
+
+
+def test_a_tolerable_gap_is_allowed(
+    analysis: Callable[..., Analysis], default_thresholds: Thresholds
+) -> None:
+    result = decide(analysis(gap_s=0.4), default_thresholds)
+    assert result.outcome == "regular"
+
+
+def test_a_quality_gated_result_is_never_high_confidence(
+    analysis: Callable[..., Analysis], default_thresholds: Thresholds
+) -> None:
+    """'Reading not clear' beside confidence 'high' tells staff the opposite of the truth."""
+    result = decide(analysis(motion_s=3.0), default_thresholds)
+    assert result.outcome == "unclear"
+    assert result.confidence != "high"
+
+
 def test_regular_band_is_eight_to_twenty(
     analysis: Callable[..., Analysis], default_thresholds: Thresholds
 ) -> None:

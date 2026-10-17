@@ -56,6 +56,9 @@ class Settings(BaseSettings):
     min_breaths: int = 3
     amp_floor_db: float = -40.0
     presence_snr: float = 0.15
+    #: The largest hole in a capture that is still a measurement. One second is a hundred
+    #: missing frames: a dropped packet is not that, and a link outage is.
+    max_gap_s: float = 1.0
 
     def thresholds(self) -> Thresholds:
         """The subset of settings the decision rules depend on, as a published contract."""
@@ -70,6 +73,7 @@ class Settings(BaseSettings):
             min_breaths=self.min_breaths,
             amp_floor_db=self.amp_floor_db,
             presence_snr=self.presence_snr,
+            max_gap_s=self.max_gap_s,
         )
 
     @property

@@ -37,6 +37,10 @@ STALE_MS = 2_000
 #: Live metrics need at least this much of the capture before they mean anything.
 LIVE_MIN_MS = 5_000
 
+#: How often the live rate is recomputed while measuring. The state machine still advances at the
+#: polling rate; only the expensive analysis is throttled.
+LIVE_REFRESH_MS = 1_000
+
 #: A placeholder analysis for "there is nothing to measure". It deliberately carries no rate and
 #: no PLV, so the rules' quality gate produces ``unclear`` rather than inventing a reading.
 NO_MEASUREMENT = Analysis(
@@ -46,6 +50,7 @@ NO_MEASUREMENT = Analysis(
     breaths=0,
     motion_s=0.0,
     flat_s=0.0,
+    gap_s=0.0,
     amp_db=-120.0,
     usable_s=0.0,
     banded=np.zeros(1),
@@ -102,6 +107,7 @@ class Station:
         self._result: Result | None = None
         self._analysis: Analysis | None = None
         self._live: LiveMetrics | None = None
+        self._live_at = 0
         self._live_motion = 0.0
         self._quality: str = "ok"
         self._presence = False
@@ -119,7 +125,9 @@ class Station:
                 raise SessionBusy(f"the station is {self._state}, not idle")
             now = self.clock()
             self._id = self.id_factory()
-            self._scenario = scenario or self.settings.scenario
+            # A script only exists on the simulator; on a recording or a live receiver the
+            # payload must not claim one is playing.
+            self._scenario = scenario if self.settings.source == "sim" else None
             self._started = now
             self._settle_until = now + int(self.settings.settle_s * 1000)
             self._capture_start = self._settle_until
@@ -127,6 +135,7 @@ class Station:
             self._result = None
             self._analysis = None
             self._live = None
+            self._live_at = 0
             self._live_motion = 0.0
             self._quality = "ok"
             self._presence = True
@@ -213,14 +222,26 @@ class Station:
         self._live = None
 
     def _refresh_live(self, now: int) -> None:
+        """Recompute the live rate at most once a second.
+
+        The state machine is cheap and runs at the polling rate; the detector is not. A full
+        window costs tens of milliseconds, so running it on every tick and every poll would put
+        the event loop at a quarter of a core and add hundreds of milliseconds to a response.
+        """
         if now - self._capture_start < LIVE_MIN_MS:
             self._live = None
             return
+        if self._live is not None and now - self._live_at < LIVE_REFRESH_MS:
+            return
+        self._live_at = now
         analysis = self._window_analysis(self._capture_start, now)
         if analysis is None:
+            # The frames stopped arriving mid-capture: there is nobody measurable in the zone.
             self._live = None
+            self._presence = False
             self._quality = "low"
             return
+        self._presence = True
         self._analysis = analysis
         self._live_motion = analysis.motion_s
         self._live = LiveMetrics(

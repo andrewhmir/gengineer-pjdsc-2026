@@ -57,10 +57,10 @@ def test_best_transmitter_prefers_the_stronger_stream(
     }
     chosen = dsp.best_transmitter(windows)
     assert chosen is not None
-    name, series, snr = chosen
-    assert name == "tx1"
-    assert snr > 0.5
-    assert series.shape == (windows["tx1"].t.shape[0],)
+    assert chosen.name == "tx1"
+    assert chosen.snr > 0.5
+    assert chosen.banded.shape == (windows["tx1"].t.shape[0],)
+    assert chosen.component.shape == (windows["tx1"].t.shape[0],)
 
 
 def test_band_power_ranks_the_transmitters_by_signal_strength(

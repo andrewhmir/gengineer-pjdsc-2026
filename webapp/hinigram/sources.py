@@ -231,7 +231,7 @@ class SimulatorSource:
     _buffer_seconds: float = 0.0
 
     def start(self, store: FrameStore) -> None:
-        self._store = store
+        self.attach(store)
         self._epoch_ms = self.clock()
         self._buffer = []
         self._buffer_seconds = 0.0
@@ -273,29 +273,41 @@ class SimulatorSource:
         self._buffer_seconds = seconds
         return self._buffer
 
+    def attach(self, store: FrameStore) -> None:
+        """Give the source somewhere to write. ``start`` does this before running the thread."""
+        self._store = store
+
+    def emit_once(self) -> None:
+        """Emit everything that is due at ``self.clock()``.
+
+        This is the whole real-time loop body, exposed so a test can drive it with a fake clock
+        instead of sleeping. It also restarts the script when the buffer is spent, so a station
+        left idle does not report a dead source, and a result screen left open does not run out
+        of frames before it resets.
+        """
+        with self._lock:
+            store = self._store
+            if store is None:
+                return
+            horizon = SESSION_BUFFER_S if self._index else IDLE_BUFFER_S
+            frames = self._frames_for(horizon)
+            want = int((self.clock() - self._epoch_ms) * self.fs / 1000.0)
+            if self._index == 0 and want > 0:
+                # Nothing was emitted before Start; begin at the current offset.
+                self._index = max(0, want - int(EMIT_INTERVAL_S * self.fs))
+            if want > self._index:
+                stop = min(want, len(frames) // 3)
+                store.push_many(frames[self._index * 3 : stop * 3])
+                self._index = stop
+            if self._index >= len(frames) // 3:
+                self._epoch_ms = self.clock()
+                self._index = 0
+                self._buffer = []
+                self._buffer_seconds = 0.0
+
     def _run(self) -> None:
         while not self._stop.is_set():
-            with self._lock:
-                store = self._store
-                if store is not None:
-                    horizon = SESSION_BUFFER_S if self._index else IDLE_BUFFER_S
-                    frames = self._frames_for(horizon)
-                    want = int((self.clock() - self._epoch_ms) * self.fs / 1000.0)
-                    if self._index == 0 and want > 0:
-                        # Nothing was emitted before Start; begin at the current offset.
-                        self._index = max(0, want - int(EMIT_INTERVAL_S * self.fs))
-                    if want > self._index:
-                        stop = min(want, len(frames) // 3)
-                        self._store.push_many(frames[self._index * 3 : stop * 3])  # type: ignore[union-attr]
-                        self._index = stop
-                    if self._index >= len(frames) // 3:
-                        # The scripted buffer is spent. Start a fresh one from now, so a station
-                        # left idle for a minute does not report a dead source, and a result
-                        # screen left open does not run out of frames before it resets.
-                        self._epoch_ms = self.clock()
-                        self._index = 0
-                        self._buffer = []
-                        self._buffer_seconds = 0.0
+            self.emit_once()
             time.sleep(EMIT_INTERVAL_S)
 
 

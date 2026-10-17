@@ -7,6 +7,8 @@ design record's (§7.1); where a value is a judgement call, the docstring says s
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import numpy as np
 from scipy.signal import butter, hilbert, sosfiltfilt
 
@@ -134,27 +136,44 @@ def band_power(x: np.ndarray, fs: float, lo: float = BAND_LO, hi: float = BAND_H
     return float(2.0 * spectrum[in_band].sum() / (centred.shape[0] ** 2))
 
 
-def best_transmitter(
-    windows: dict[str, Window],
-) -> tuple[str, np.ndarray, float] | None:
+@dataclass(frozen=True)
+class Transmitter:
+    """The chosen node, with the series the detector already computed for it.
+
+    The component and its bandpassed form are returned together because every caller needs both:
+    recomputing them was the most expensive duplicated work on the analysis path.
+    """
+
+    name: str
+    component: np.ndarray
+    banded: np.ndarray
+    snr: float
+    power: float
+
+
+def best_transmitter(windows: dict[str, Window]) -> Transmitter | None:
     """Choose the transmitter with the strongest respiratory modulation.
 
-    Ranking is by in-band *power* (which node is closest to the person), while the returned score
-    is the in-band *fraction* (whether what that node hears is respiratory at all). Returns the
-    name, its bandpassed series, and the fraction; None when no transmitter has two seconds of
-    data, which is the honest answer for a station nobody is standing at.
+    Ranking is by in-band *power* (which node is closest to the person), while ``snr`` is the
+    in-band *fraction* (whether what that node hears is respiratory at all). Returns None when no
+    transmitter has two seconds of data, which is the honest answer for a station nobody is
+    standing at.
     """
-    best: tuple[str, np.ndarray, float] | None = None
-    best_power = 0.0
+    best: Transmitter | None = None
     for name in sorted(windows):
         window = windows[name]
         if window.t.shape[0] < 2 * window.fs:
             continue
         component = first_component(unwrap_channels(window.phase))
         power = band_power(component, window.fs)
-        if best is None or power > best_power:
-            best_power = power
-            best = (name, bandpass(component, window.fs), band_snr(component, window.fs))
+        if best is None or power > best.power:
+            best = Transmitter(
+                name=name,
+                component=component,
+                banded=bandpass(component, window.fs),
+                snr=band_snr(component, window.fs),
+                power=power,
+            )
     return best
 
 

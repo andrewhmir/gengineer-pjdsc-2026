@@ -128,6 +128,7 @@ def analysis() -> Callable[..., Analysis]:
             "breaths": 7,
             "motion_s": 0.0,
             "flat_s": 0.0,
+            "gap_s": 0.0,
             "amp_db": -20.0,
             "usable_s": 30.0,
             "banded": np.zeros(8, dtype=np.float64),
@@ -234,9 +235,12 @@ class ScriptedSource:
 
     name = "sim"
 
-    def __init__(self, scenario: str, seconds: float = 35.0) -> None:
+    def __init__(
+        self, scenario: str, seconds: float = 35.0, hole: tuple[float, float] | None = None
+    ) -> None:
         self.scenario = scenario
         self.seconds = seconds
+        self.hole = hole
         self.store: FrameStore | None = None
         self.started_at: int | None = None
 
@@ -250,7 +254,13 @@ class ScriptedSource:
         self.started_at = at_ms
         assert self.store is not None
         total = int(round(self.seconds * FS))
-        self.store.push_many(list(cached_frames(self.scenario, at_ms, total)))
+        frames = cached_frames(self.scenario, at_ms, total)
+        if self.hole is not None:
+            start, stop = self.hole
+            frames = tuple(
+                frame for frame in frames if not (start <= (frame.t - at_ms) / 1000.0 <= stop)
+            )
+        self.store.push_many(list(frames))
 
     def set_scenario(self, name: str) -> None:
         self.scenario = name
@@ -267,12 +277,17 @@ def make_station(
 ) -> Callable[..., object]:
     """A station wired to a scripted source and a hand-moved clock."""
 
-    def factory(scenario: str = "regular", seconds: float = 35.0, **overrides: object) -> object:
+    def factory(
+        scenario: str = "regular",
+        seconds: float = 35.0,
+        hole: tuple[float, float] | None = None,
+        **overrides: object,
+    ) -> object:
         from hinigram.station import Station
 
         settings = settings_factory(**overrides)
         store = FrameStore()
-        source = ScriptedSource(scenario, seconds=seconds)
+        source = ScriptedSource(scenario, seconds=seconds, hole=hole)
         source.start(store)
         station = Station(store, settings, clock=clock.now, source=source)
         return station

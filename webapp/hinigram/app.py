@@ -36,7 +36,9 @@ TICK_INTERVAL_S = 0.25
 
 async def _tick_forever(station: Station) -> None:
     while True:
-        station.tick()
+        # A tick can run a full analysis at a session boundary; keep it off the event loop so a
+        # poll never waits behind it.
+        await asyncio.to_thread(station.tick)
         await asyncio.sleep(TICK_INTERVAL_S)
 
 

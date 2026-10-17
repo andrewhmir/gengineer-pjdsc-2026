@@ -52,7 +52,8 @@
       accent: token("--accent", "#0d6e78"),
       ok: token("--ok", "#0f7b4f"),
       warn: token("--warn", "#8f5600"),
-      crit: token("--crit", "#b3261e")
+      crit: token("--crit", "#b3261e"),
+      onAccent: token("--on-accent", "#ffffff")
     };
   }
 
@@ -298,12 +299,12 @@
     if (!result || state.state !== "result") {
       return;
     }
-    var word =
-      result.outcome === "regular"
-        ? "REGULAR"
-        : result.outcome === "irregular"
-          ? "IRREGULAR"
-          : "NOT CLEAR";
+    if (result.outcome === "regular") {
+      // The design rings a regular result in green and gives it no tag: there is nothing to
+      // annotate, and a label on a good result reads as a warning.
+      return;
+    }
+    var word = result.outcome === "irregular" ? "IRREGULAR" : "TRY AGAIN";
     var label = word;
     if (result.rr_bpm !== null && result.rr_bpm !== undefined) {
       label += " · " + result.rr_bpm.toFixed(1) + " /min";
@@ -333,7 +334,7 @@
     ctx.strokeStyle = rgba(outcomeColour(), 0.5);
     ctx.lineWidth = 1;
     ctx.stroke();
-    ctx.fillStyle = "#ffffff";
+    ctx.fillStyle = palette.onAccent;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(label, x + width / 2, y + height / 2 + 1);
