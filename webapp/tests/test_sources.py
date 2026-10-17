@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from hinigram.config import Settings
+from hinigram.config import PACKAGE_DIR, Settings
 from hinigram.pipeline.analyze import Analysis, analyze_window
 from hinigram.pipeline.frames import FrameStore
 from hinigram.pipeline.rules import decide
@@ -22,9 +22,13 @@ from hinigram.sources import (
     SerialSource,
     SimulatorSource,
     build_source,
+    iter_replay_fixture,
     load_scenarios,
     simulate_frames,
 )
+
+#: The committed synthetic session, kept next to `scenarios.json` inside the package.
+REPLAY_FIXTURE = PACKAGE_DIR / "fixtures" / "replay_session.jsonl.gz"
 
 
 def test_the_scenario_set_covers_every_outcome() -> None:
@@ -137,3 +141,70 @@ def test_a_scenario_defaults_are_the_documented_ones() -> None:
     assert scenario.cv == 0.0
     assert scenario.gains == (0.35, 0.18, 0.08)
     assert scenario.apnea is None and scenario.motion is None
+
+
+# --- the committed replay fixture -------------------------------------------------------
+
+
+def test_the_replay_fixture_is_a_full_session() -> None:
+    frames = iter_replay_fixture()
+    assert len(frames) > 9000
+    assert {"tx1", "tx2", "tx3"} == {frame.tx for frame in frames}
+    assert all(later.t >= earlier.t for earlier, later in zip(frames, frames[1:], strict=False))
+
+
+def test_the_replay_fixture_is_small_enough_to_commit() -> None:
+    """A fixture over the repository's 1 MB ceiling would fail the root suite."""
+    assert REPLAY_FIXTURE.stat().st_size < 1_000_000
+
+
+def test_the_replay_fixture_reaches_a_regular_result() -> None:
+    store = FrameStore()
+    for frame in iter_replay_fixture():
+        store.push(frame)
+    thresholds = Settings().thresholds()
+    analysis = analyze_window(store.window(3000.0, 33000.0), thresholds)
+    assert analysis is not None
+    assert decide(analysis, thresholds).outcome == "regular"
+
+
+def test_the_replay_source_restarts_at_each_session() -> None:
+    source = ReplaySource(path=REPLAY_FIXTURE)
+    source.start(FrameStore())
+    try:
+        source.on_session_start(4_000)
+    finally:
+        source.stop()
+    assert source.position == 0
+
+
+# --- the serial source ------------------------------------------------------------------
+
+
+class FakeStream:
+    """Minimal stand-in for ``serial.Serial``: one buffered line per ``readline``."""
+
+    def __init__(self, lines: list[bytes]) -> None:
+        self._lines = list(lines)
+
+    def readline(self) -> bytes:
+        return self._lines.pop(0) if self._lines else b""
+
+
+def test_the_serial_parser_keeps_good_frames_and_counts_bad_ones() -> None:
+    good = (
+        '{"v": 1, "t": 10, "tx": "tx1", "ch": 3, "seq": 0, "rssi": -40, '
+        '"amp": [1, 2, 3], "phase": [0, 0, 0]}'
+    )
+    store = FrameStore()
+    source = SerialSource(
+        port="FAKE",
+        stream=FakeStream([good.encode() + b"\n", b'{"t": 11, "tx": "tx1"}\n', b"garbage\n"]),
+    )
+    frames = source.read_frames(store=store)
+    assert len(frames) == 1
+    assert store.counters().malformed == 2
+
+
+def test_the_serial_source_does_not_invent_frames_without_a_stream() -> None:
+    assert SerialSource(port="FAKE").read_frames() == []

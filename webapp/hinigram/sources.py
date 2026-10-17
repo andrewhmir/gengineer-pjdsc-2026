@@ -300,6 +300,11 @@ class ReplaySource:
             self._index = 0
             self._epoch_ms = at_ms
 
+    @property
+    def position(self) -> int:
+        """How many fixture frames this session has already emitted."""
+        return self._index
+
     def _run(self) -> None:
         while not self._stop.is_set():
             with self._lock:
@@ -324,10 +329,11 @@ class SerialSource:
     baudrate: int = 115200
     name: str = "serial"
     closed: bool = False
+    #: The open stream. A test injects a fake; the thread opens a real port when it is unset.
+    stream: Any = None
     _store: FrameStore | None = field(default=None, repr=False)
     _thread: threading.Thread | None = field(default=None, repr=False)
     _stop: threading.Event = field(default_factory=threading.Event, repr=False)
-    _stream: Any = field(default=None, repr=False)
 
     def start(self, store: FrameStore) -> None:
         self._store = store
@@ -345,32 +351,36 @@ class SerialSource:
     def on_session_start(self, at_ms: int) -> None:
         """A real receiver has no script to restart; the frames are whatever they are."""
 
-    def read_frames(self) -> list[Frame]:
+    def read_frames(self, store: FrameStore | None = None, limit: int = 1000) -> list[Frame]:
         """Read every complete line currently available from ``stream``.
 
-        Kept separate from the thread so a test can feed a fake stream with a fragmented line and
-        a malformed one and assert that the good frame survives and the bad one is counted.
+        Kept separate from the thread so a test can feed a fake stream with a good line and a
+        malformed one, and assert that the good frame survives while the bad one is counted
+        rather than raised.
         """
         frames: list[Frame] = []
-        stream = self._stream
-        if stream is None:
+        counter = store or self._store
+        if self.stream is None:
             return frames
-        for raw in stream:
+        for _ in range(limit):
+            raw = self.stream.readline()
+            if not raw:
+                break
             frame = parse_frame_line(raw)
             if frame is None:
-                if self._store is not None:
-                    self._store.count_malformed()
+                if counter is not None:
+                    counter.count_malformed()
                 continue
             frames.append(frame)
         return frames
 
     def _run(self) -> None:
         while not self._stop.is_set():
-            if self._stream is None:
+            if self.stream is None:
                 try:
                     import serial  # imported lazily: the simulator must run without pyserial
 
-                    self._stream = serial.Serial(self.port, self.baudrate, timeout=0.5)
+                    self.stream = serial.Serial(self.port, self.baudrate, timeout=0.5)
                 except ImportError:
                     self.closed = True
                     return
