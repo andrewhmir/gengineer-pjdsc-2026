@@ -7,13 +7,14 @@ no HTTP. That split is what lets a 33-second session be tested in milliseconds, 
 
 from __future__ import annotations
 
+import math
 import secrets
 import threading
-import time
 from collections.abc import Callable
 
 import numpy as np
 
+from hinigram.clock import monotonic_ms
 from hinigram.config import Settings
 from hinigram.contracts import (
     Health,
@@ -26,7 +27,7 @@ from hinigram.contracts import (
 from hinigram.pipeline import dsp
 from hinigram.pipeline.analyze import Analysis, analyze_window
 from hinigram.pipeline.frames import FrameStore
-from hinigram.pipeline.rules import chip_for, decide, stage_label, steps_for
+from hinigram.pipeline.rules import chip_for, decide, panel_copy, stage_label, steps_for
 from hinigram.sources import Source
 
 #: How soon after a frame stops arriving the station treats the window as stale. A laptop that
@@ -66,11 +67,6 @@ class SessionBusy(StationError):
 
 class NotInResult(StationError):
     """Done was pressed when there was no result to acknowledge."""
-
-
-def monotonic_ms() -> int:
-    """The default clock: monotonic, in milliseconds, never affected by wall-clock changes."""
-    return int(time.monotonic() * 1000)
 
 
 def _new_id() -> str:
@@ -252,6 +248,9 @@ class Station:
         with self._lock:
             now = self.clock()
             elapsed = 0 if self._started is None else max(0, now - self._started)
+            duration = int((self.settings.settle_s + self.settings.capture_s) * 1000)
+            remaining_s = max(0, math.ceil((duration - elapsed) / 1000)) if elapsed else None
+            headline, lede, hint = panel_copy(self._state, self._result, remaining_s)
             return SessionState(
                 id=self._id,
                 state=self._state,
@@ -259,11 +258,14 @@ class Station:
                 scenario=self._scenario,
                 started_ms=self._started,
                 elapsed_ms=elapsed,
-                duration_ms=int((self.settings.settle_s + self.settings.capture_s) * 1000),
+                duration_ms=duration,
                 presence=self._presence,
                 quality="low" if self._quality == "low" else "ok",
                 motion=self._live_motion > 0.5,
                 stage_label=stage_label(self._state, self._result),
+                headline=headline,
+                lede=lede,
+                hint=hint,
                 chip=chip_for(self._state, self._quality, self._result),
                 steps=steps_for(self._state),
                 live=self._live,

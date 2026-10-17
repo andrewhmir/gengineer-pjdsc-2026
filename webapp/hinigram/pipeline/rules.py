@@ -55,6 +55,16 @@ _COPY: dict[tuple[str, str], tuple[str, str]] = {
 #: the outcome becomes unclear rather than a clinical statement.
 CONFIDENT_BREATHS = 5
 
+#: The panel's copy while nothing has been measured yet. These are the words a person reads
+#: standing in front of the kiosk, so they live here where a test can hold them.
+IDLE_HEADLINE = "Step onto the mark"
+IDLE_LEDE = (
+    "Stand facing the screen, about one arm's length from the sensors. Breathing normally is fine."
+)
+IDLE_HINT = "Nothing is measured or stored until you press Start."
+MEASURING_LEDE = "Stay still and breathe normally."
+MEASURING_HINT = "If you move, the reading may restart."
+
 
 def patient_copy(outcome: Outcome, advice: Advice) -> tuple[str, str]:
     """The headline and the one line of advice for an outcome."""
@@ -160,6 +170,26 @@ def decide(analysis: Analysis, thresholds: Thresholds) -> Result:
         ),
         thresholds=thresholds,
     )
+
+
+def panel_copy(
+    state: StationState,
+    result: Result | None,
+    remaining_s: int | None = None,
+) -> tuple[str, str, str | None]:
+    """The headline, the one line under it, and the small print, for any state.
+
+    The countdown is computed here rather than in the browser, so the number a patient reads is
+    the number the station believes, and a test can assert it without a JavaScript runtime.
+    """
+    if state == "idle":
+        return IDLE_HEADLINE, IDLE_LEDE, IDLE_HINT
+    if state in ("settle", "measuring"):
+        seconds = remaining_s if remaining_s is not None else 30
+        return f"{seconds} seconds", MEASURING_LEDE, MEASURING_HINT
+    if result is None:
+        return "Reading finished", "", None
+    return result.headline, result.lede, None
 
 
 def stage_label(state: StationState, result: Result | None) -> str:

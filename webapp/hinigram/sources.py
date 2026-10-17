@@ -14,12 +14,14 @@ import json
 import math
 import threading
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
 
 import numpy as np
 
+from hinigram.clock import monotonic_ms
 from hinigram.config import PACKAGE_DIR, Settings
 from hinigram.contracts import Frame
 from hinigram.pipeline.frames import FrameStore, parse_frame_line
@@ -218,6 +220,7 @@ class SimulatorSource:
     scenario: Scenario
     fs: float = 100.0
     name: str = "sim"
+    clock: Callable[[], int] = monotonic_ms
     _store: FrameStore | None = field(default=None, repr=False)
     _thread: threading.Thread | None = field(default=None, repr=False)
     _stop: threading.Event = field(default_factory=threading.Event, repr=False)
@@ -229,7 +232,7 @@ class SimulatorSource:
 
     def start(self, store: FrameStore) -> None:
         self._store = store
-        self._epoch_ms = int(time.time() * 1000)
+        self._epoch_ms = self.clock()
         self._buffer = []
         self._buffer_seconds = 0.0
         self._index = 0
@@ -277,7 +280,7 @@ class SimulatorSource:
                 if store is not None:
                     horizon = SESSION_BUFFER_S if self._index else IDLE_BUFFER_S
                     frames = self._frames_for(horizon)
-                    want = int((time.time() * 1000 - self._epoch_ms) * self.fs / 1000.0)
+                    want = int((self.clock() - self._epoch_ms) * self.fs / 1000.0)
                     if self._index == 0 and want > 0:
                         # Nothing was emitted before Start; begin at the current offset.
                         self._index = max(0, want - int(EMIT_INTERVAL_S * self.fs))
@@ -294,6 +297,7 @@ class ReplaySource:
 
     path: Path
     name: str = "replay"
+    clock: Callable[[], int] = monotonic_ms
     _store: FrameStore | None = field(default=None, repr=False)
     _thread: threading.Thread | None = field(default=None, repr=False)
     _stop: threading.Event = field(default_factory=threading.Event, repr=False)
@@ -305,7 +309,7 @@ class ReplaySource:
     def start(self, store: FrameStore) -> None:
         self._store = store
         self._frames = iter_replay_fixture(self.path)
-        self._epoch_ms = int(time.time() * 1000)
+        self._epoch_ms = self.clock()
         self._index = 0
         self._stop.clear()
         self._thread = threading.Thread(target=self._run, name="replay", daemon=True)
@@ -336,7 +340,7 @@ class ReplaySource:
                 store = self._store
                 if store is not None and self._frames:
                     origin = self._frames[0].t
-                    now_ms = time.time() * 1000
+                    now_ms = self.clock()
                     while self._index < len(self._frames):
                         frame = self._frames[self._index]
                         if origin + (now_ms - self._epoch_ms) < frame.t:
@@ -422,7 +426,7 @@ class SerialSource:
             time.sleep(0.01)
 
 
-def build_source(settings: Settings) -> Source:
+def build_source(settings: Settings, clock: Callable[[], int] = monotonic_ms) -> Source:
     """Construct the source the settings name, refusing an incomplete configuration."""
     scenarios = load_scenarios()
     if settings.source == "serial":
@@ -430,12 +434,12 @@ def build_source(settings: Settings) -> Source:
             raise ValueError("--serial-port is required for --source serial")
         return SerialSource(port=settings.serial_port)
     if settings.source == "replay":
-        return ReplaySource(path=settings.replay_file)
+        return ReplaySource(path=settings.replay_file, clock=clock)
     if settings.scenario not in scenarios:
         raise ValueError(
             f"unknown scenario {settings.scenario!r}; choose one of {sorted(scenarios)}"
         )
-    return SimulatorSource(scenario=scenarios[settings.scenario])
+    return SimulatorSource(scenario=scenarios[settings.scenario], clock=clock)
 
 
 def iter_replay_fixture(path: Path | None = None) -> list[Frame]:

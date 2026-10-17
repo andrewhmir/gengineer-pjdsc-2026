@@ -22,11 +22,12 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from hinigram import __version__
+from hinigram.clock import monotonic_ms
 from hinigram.config import PACKAGE_DIR, Settings
 from hinigram.contracts import Health, SessionState, Trace
 from hinigram.pipeline.frames import FrameStore
 from hinigram.sources import build_source, load_scenarios
-from hinigram.station import NotInResult, SessionBusy, Station, monotonic_ms
+from hinigram.station import NotInResult, SessionBusy, Station
 
 #: How often the server advances the state machine on its own. Requests also advance it, so the
 #: station is correct even if nothing is polling; this only keeps the clock honest in between.
@@ -61,7 +62,7 @@ def create_app(
         built_source = source
         if built_station is None:
             store = FrameStore()
-            built_source = source or build_source(resolved)
+            built_source = source or build_source(resolved, clock=clock or monotonic_ms)
             built_source.start(store)  # type: ignore[attr-defined]
             built_station = Station(
                 store,

@@ -17,6 +17,7 @@ from hinigram.pipeline.rules import (
     STEP_LABELS,
     chip_for,
     decide,
+    panel_copy,
     patient_copy,
     stage_label,
     steps_for,
@@ -169,6 +170,28 @@ def test_the_three_step_strip_marks_the_current_step() -> None:
     assert [step.status for step in steps_for("idle")] == ["on", "todo", "todo"]
     assert [step.status for step in steps_for("measuring")] == ["done", "on", "todo"]
     assert [step.status for step in steps_for("result")] == ["done", "done", "on"]
+
+
+def test_the_panel_copy_belongs_to_the_station_not_the_browser() -> None:
+    """Every sentence a patient reads is decided here, so a test can hold it in place."""
+    headline, lede, hint = panel_copy("idle", None)
+    assert headline == "Step onto the mark"
+    assert "arm's length" in lede
+    assert hint == "Nothing is measured or stored until you press Start."
+
+    measuring = panel_copy("measuring", None, remaining_s=24)
+    assert measuring[0] == "24 seconds"
+    assert measuring[1] == "Stay still and breathe normally."
+
+
+def test_the_result_headline_is_the_results_own(
+    analysis: Callable[..., Analysis], default_thresholds: Thresholds
+) -> None:
+    irregular = decide(analysis(rr_bpm=26.4, plv=0.5), default_thresholds)
+    headline, lede, hint = panel_copy("result", irregular)
+    assert headline == "Irregular breathing"
+    assert lede == irregular.lede
+    assert hint is None
 
 
 def test_the_position_chip_flips_with_quality() -> None:

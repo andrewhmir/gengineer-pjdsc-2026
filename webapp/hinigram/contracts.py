@@ -182,7 +182,8 @@ class SessionState(BaseModel):
     """The whole station, as one payload. The page is a renderer for this object.
 
     Nothing here identifies a person: the id is random, and every other field describes the
-    measurement or the machine.
+    measurement or the machine. ``headline``, ``lede`` and ``hint`` carry the panel's copy so the
+    kiosk never composes a sentence of its own.
     """
 
     id: str
@@ -196,6 +197,9 @@ class SessionState(BaseModel):
     quality: Literal["ok", "low"]
     motion: bool
     stage_label: str
+    headline: str
+    lede: str
+    hint: str | None
     chip: Chip | None
     steps: list[StepState]
     live: LiveMetrics | None

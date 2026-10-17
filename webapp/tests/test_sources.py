@@ -7,12 +7,14 @@ rather than by guessing.
 
 from __future__ import annotations
 
+import time
 from collections.abc import Callable
 from functools import cache
 from pathlib import Path
 
 import pytest
 
+from hinigram.clock import monotonic_ms
 from hinigram.config import PACKAGE_DIR, Settings
 from hinigram.contracts import Frame
 from hinigram.pipeline.analyze import Analysis, analyze_window
@@ -28,6 +30,7 @@ from hinigram.sources import (
     load_scenarios,
     simulate_frames,
 )
+from tests.helpers import FakeClock
 
 #: The committed synthetic session, kept next to `scenarios.json` inside the package.
 REPLAY_FIXTURE = PACKAGE_DIR / "fixtures" / "replay_session.jsonl.gz"
@@ -131,6 +134,36 @@ def test_build_source_selects_the_named_source() -> None:
     assert isinstance(replay, ReplaySource)
     serial = build_source(Settings(source="serial", serial_port="COM9"))
     assert isinstance(serial, SerialSource)
+
+
+def test_every_source_shares_the_stations_clock() -> None:
+    """A source on wall-clock time and a station on monotonic time never agree on a window."""
+    marker = FakeClock()
+    now = marker.now
+    for source in (
+        build_source(Settings(source="sim"), clock=now),
+        build_source(Settings(source="replay"), clock=now),
+    ):
+        assert source.clock is now
+
+
+def test_the_running_simulator_stamps_frames_in_the_station_clock() -> None:
+    """Regression: the simulator once stamped frames with epoch time, so settle saw nothing."""
+    source = SimulatorSource(load_scenarios()["regular"])
+    store = FrameStore()
+    source.start(store)
+    start_ms = monotonic_ms()
+    try:
+        source.on_session_start(start_ms)
+        deadline = time.time() + 2.0
+        while store.counters().frames == 0 and time.time() < deadline:
+            time.sleep(0.02)
+    finally:
+        source.stop()
+    counters = store.counters()
+    assert counters.frames > 0
+    assert counters.last_t is not None
+    assert abs(counters.last_t - monotonic_ms()) < 60_000
 
 
 def test_build_source_refuses_an_unknown_scenario() -> None:
