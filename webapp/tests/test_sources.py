@@ -14,6 +14,7 @@ from pathlib import Path
 
 import pytest
 
+from hinigram import sources
 from hinigram.clock import monotonic_ms
 from hinigram.config import PACKAGE_DIR, Settings
 from hinigram.contracts import Frame
@@ -126,6 +127,31 @@ def test_the_apnea_scenario_stalls_the_breath_phase(
 ) -> None:
     analysis = analyse_scenario("apnea")
     assert analysis.flat_s >= 10.0
+
+
+def test_the_simulator_keeps_streaming_after_its_buffer_is_spent() -> None:
+    """Regression: an idle station reported a dead source once the first buffer ran out."""
+    original = sources.IDLE_BUFFER_S
+    sources.IDLE_BUFFER_S = 0.3
+    source = SimulatorSource(load_scenarios()["regular"])
+    store = FrameStore()
+    source.start(store)
+    try:
+        source.on_session_start(monotonic_ms())
+        deadline = time.time() + 3.0
+        while time.time() < deadline:
+            last = store.counters().last_t
+            if last is not None and monotonic_ms() - last < 200:
+                break
+            time.sleep(0.05)
+        # Wait past the buffer horizon and confirm frames are still arriving.
+        time.sleep(0.6)
+    finally:
+        source.stop()
+        sources.IDLE_BUFFER_S = original
+    last = store.counters().last_t
+    assert last is not None
+    assert monotonic_ms() - last < 2_000
 
 
 def test_build_source_selects_the_named_source() -> None:

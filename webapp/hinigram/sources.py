@@ -288,6 +288,14 @@ class SimulatorSource:
                         stop = min(want, len(frames) // 3)
                         self._store.push_many(frames[self._index * 3 : stop * 3])  # type: ignore[union-attr]
                         self._index = stop
+                    if self._index >= len(frames) // 3:
+                        # The scripted buffer is spent. Start a fresh one from now, so a station
+                        # left idle for a minute does not report a dead source, and a result
+                        # screen left open does not run out of frames before it resets.
+                        self._epoch_ms = self.clock()
+                        self._index = 0
+                        self._buffer = []
+                        self._buffer_seconds = 0.0
             time.sleep(EMIT_INTERVAL_S)
 
 
