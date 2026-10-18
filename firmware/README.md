@@ -1,3 +1,5 @@
+# !!!! Request to MODIFY this since we will NOT be using CircuitPython for this project
+
 # Firmware lane — CircuitPython sensor node
 
 This lane is the sensor node half of the project. It is **CircuitPython running on a

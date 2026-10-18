@@ -1,3 +1,5 @@
+# !!!! Request to DELETE this since we will not be using CircuitPython for this project
+
 # Template for the credentials file the board uses. Committed; placeholders only.
 #
 # CircuitPython expects a module named secrets.py beside code.py at the root of
