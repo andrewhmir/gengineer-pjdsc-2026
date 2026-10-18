@@ -7,6 +7,10 @@ dist/
 .venv/
 venv/
 
+# --- ESP-IDF ---
+.cache/
+eim-gui-x64.exe
+
 # --- Tooling caches ---
 .pytest_cache/
 .mypy_cache/
