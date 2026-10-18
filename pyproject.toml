@@ -41,7 +41,13 @@ target-version = "py312"
 # specs/ holds frozen design records: the spec and the implementation plan as
 # they were approved. Reformatting them would rewrite the historical record and
 # bury the prose that decisions were argued from, so they are never formatted.
-extend-exclude = ["specs"]
+#
+# notebooks/research/ is excluded for the same reason: those are the team's
+# research records as they ran on Colab, and they are not maintained Python.
+# Reformatting their code cells would rewrite the record and produce a diff
+# nobody can review, for a directory CI never executes. The analysis notebooks
+# (the direct children of notebooks/) are still linted and formatted.
+extend-exclude = ["specs", "notebooks/research"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B", "SIM"]

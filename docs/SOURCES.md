@@ -196,12 +196,68 @@ Recommendation. https://www.w3.org/TR/WCAG22/
 The accessibility standard the interface is held to: contrast, non-colour status encoding,
 and keyboard operation.
 
+### Research datasets
+
+The research records under [`../notebooks/research/`](../notebooks/research/) analyse three
+external datasets. They are cited here because those records are committed, and per this
+file's rule a dataset is cited before it appears anywhere. **No data is committed with them**;
+every entry below is retrieved at run time, and each records its licence so that stays true.
+
+Moody, B., Moody, G., Villarroel, M., Clifford, G. D., & Silva, I. (2020). *MIMIC-III
+Waveform Database* (version 1.0) [Data set]. PhysioNet. https://doi.org/10.13026/c2607m
+
+The de-identified ICU waveform and numerics database that `D01_10-17_Gengineer.ipynb` reads
+through `wfdb`, and that the all-in-one master's MIMIC-III calibration section is named for.
+Licence: Open Data Commons Open Database License v1.0. Committed: no — 6.7 TB, accessed from
+PhysioNet. (Retrieved 17 October 2026.)
+
+Johnson, A. E. W., Pollard, T. J., Shen, L., Lehman, L. H., Feng, M., Ghassemi, M., Moody,
+B., Szolovits, P., Celi, L. A., & Mark, R. G. (2016). MIMIC-III, a freely accessible critical
+care database. *Scientific Data, 3*, 160035. https://doi.org/10.1038/sdata.2016.35
+
+The database descriptor that PhysioNet asks users of the waveform database to cite alongside
+it. Describes the de-identification and the access conditions the notebooks rely on.
+
+Pollard, T., Moody, B. E., Lehman, L., Gow, B., Fernandes, C., Xie, C., Johnson, A., Mark,
+R. G., & Heldt, T. (2026). PhysioNet as a global platform for biomedical research. *Nature
+Health, 1*(8), 792–795. https://doi.org/10.1038/s44360-026-00096-z
+
+The platform-level PhysioNet citation PhysioNet requires for any resource downloaded from it.
+(Retrieved 17 October 2026.)
+
+Zhu, G., Hu, Y., Gao, W., Wang, W.-H., Wang, B., & Liu, K. (2026). CSI-Bench: A large-scale
+in-the-wild dataset for multi-task WiFi sensing. In *Advances in Neural Information Processing
+Systems* (Vol. 38). https://arxiv.org/abs/2505.21866
+
+Describes the WiFi sensing benchmark whose CSI data the notebooks use, and reports the
+benchmark results the retrieval procedure reproduces. Licence: CC BY-NC-ND 4.0, which forbids
+redistribution, so the data is fetched from Kaggle and never committed.
+
+Zhu, G. (2025). *CSI-Bench* [Data set]. Kaggle.
+https://www.kaggle.com/datasets/guozhenjennzhu/csi-bench
+
+The dataset release itself, downloaded by `kagglehub.dataset_download("guozhenjennzhu/csi-bench")`.
+The Kaggle release is versioned in place: the dataset's own repository documents **Version 12**
+as the release its reported results use, and `kagglehub` resolves whichever release is current
+at run time. Committed: no. (Retrieved 17 October 2026.)
+
+Schirrmeister, R. T., Springenberg, J. T., Fiederer, L. D. J., Glasstetter, M., Eggensperger,
+K., Tangermann, M., Hutter, F., Burgard, W., & Ball, T. (2017). Deep learning with
+convolutional neural networks for EEG decoding and visualization. *Human Brain Mapping,
+38*(11), 5391–5420. https://doi.org/10.1002/hbm.23730
+
+The paper that documents the High-Gamma Dataset, which `D01_10-17_Gengineer.ipynb` studies,
+and the source of the ShallowConvNet baseline it compares against. Committed: no — the
+notebook reads a preprocessed per-subject cache (`subj_cache/subj_N.npz`) that is not in this
+repository.
+
 ## Template for future dataset entries
 
-Datasets are **not yet chosen** — see §9 of the deferred decisions in
+The **analysis lane's** dataset is not yet chosen — see §9 of the deferred decisions in
 [`../specs/2026-10-10-repo-bootstrap-design.md`](../specs/2026-10-10-repo-bootstrap-design.md).
-Copy the appropriate template below, replace every `[bracketed placeholder]`, delete the
-lines that do not apply, and move the completed entry into "Sources currently used" under
+The research records above use external datasets and are already cited; a new dataset is added
+by copying the appropriate template below, replacing every `[bracketed placeholder]`, deleting
+the lines that do not apply, and moving the completed entry into "Sources currently used" under
 a new "### Datasets" heading. **Do not leave a placeholder in the used list.**
 
 ### Template A — agency dataset or published table

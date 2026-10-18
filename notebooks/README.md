@@ -29,6 +29,11 @@ Two names are special:
 The naming convention applies to the notebooks that are committed. An exploratory
 notebook you are not ready to publish does not belong in this directory yet.
 
+One exception: [`research/`](research/) holds the team's finished research records, which
+keep the names they were produced under because they are not chapters of the analysis
+narrative. They are not executed; the
+[execution section](#execution-how-notebooks-are-selected-and-run) states the rule.
+
 ## What belongs in a notebook, and what does not
 
 A notebook is **the analysis and its explanation, in the order a reader should meet
@@ -111,11 +116,27 @@ nbmake_enabled and p.match("*ipynb") and "_build" not in p.parts
 ```
 
 It reads no notebook metadata at all. So **every `*.ipynb` directly in this directory is
-executed** by Task 9's CI job, which runs:
+executed** by the CI job, which runs:
 
 ```console
-uv run pytest --nbmake notebooks/ -q
+uv run pytest --nbmake notebooks/ --ignore=notebooks/research -q
 ```
+
+`notebooks/research/` is the one explicit exclusion, and it is made by path in the CI
+command — not by a tag, and not hidden in a configuration file. That directory holds the
+team's research records ([`research/README.md`](research/README.md)), which need a GPU,
+`torch`, `wfdb`, and Kaggle and PhysioNet downloads that the locked root environment does
+not install; executing them would fail on the first import. Direct children of `notebooks/`
+are unaffected.
+
+| Path | Executed in CI? | What belongs there |
+|---|---|---|
+| `notebooks/*.ipynb` | **Yes** | The analysis narrative: offline, committed fixtures, deterministic seeds. |
+| `notebooks/research/*.ipynb` | **No** | Finished research records that carry their own environment and datasets. |
+
+Being outside the executed set is not a way to land unfinished work: nothing runs the
+research directory, so a broken record there would never be caught. It is for finished
+artifacts only.
 
 Run one notebook the same way:
 
@@ -124,16 +145,18 @@ uv run pytest --nbmake notebooks/03-immunization-coverage-trends.ipynb -v
 ```
 
 The practical consequence is the part worth remembering: **a half-written or scratch
-notebook left in this lane will run in CI and can fail the build.** Being in `notebooks/`
-is what gets it collected, and neither the `_template` underscore nor any metadata entry
-excludes it — I verified that a `_`-prefixed notebook is collected exactly like any other.
-Unfinished work therefore belongs **outside `notebooks/`** (or outside the repository), or
-it must be self-contained enough to execute. The only exclusion `nbmake` applies of its own
-accord is a path containing `_build`, which is its own convention for ignored build output,
-not a general-purpose "do not run this" switch.
+notebook left directly in this lane will run in CI and can fail the build.** Being directly
+in `notebooks/` is what gets it collected, and neither the `_template` underscore nor any
+metadata entry excludes it — I verified that a `_`-prefixed notebook is collected exactly
+like any other. Unfinished work therefore belongs **outside `notebooks/`** (or outside the
+repository), or it must be self-contained enough to execute. The only exclusion `nbmake`
+applies of its own accord is a path containing `_build`, which is its own convention for
+ignored build output, not a general-purpose "do not run this" switch.
 
-Because there is no opt-in marker, choosing to commit a notebook into this lane *is* the
-decision to have it run in CI.
+Because there is no opt-in marker, choosing to commit a notebook directly into this lane
+*is* the decision to have it run in CI. The one path that is not executed —
+`notebooks/research/` — is excluded by the CI command itself, not by anything a notebook
+can declare.
 
 ### The working directory is the notebook's own directory
 
@@ -152,12 +175,14 @@ other clone. Write the path relative to the notebook and both problems disappear
 
 ### The CI job
 
-Task 9 adds the workflow; until it lands, nothing runs these notebooks automatically. The
-`notebooks` job, guarded on a pull request touching `notebooks/`, will run
-`uv sync --locked` and then `uv run pytest --nbmake notebooks/ -q`. A failure in any cell
+The `notebooks` job in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) runs on a
+pull request touching `notebooks/`: `uv sync --locked`, then
+`uv run pytest --nbmake notebooks/ --ignore=notebooks/research -q`. A failure in any cell
 fails the build, so keep long-running work out of the template path, and prefer a
 deterministic seed over a lucky one — an unseeded notebook passes on your machine and
-fails on the judge's.
+fails on the judge's. The `--ignore` is why a research record can be committed without
+that job trying to install a 2 GB training dependency: the executed set is the direct
+children, and the command says so out loud.
 
 ## Related documents
 

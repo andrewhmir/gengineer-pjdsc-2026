@@ -42,9 +42,25 @@ limited to stored output — the full semantics belong in the lane's `README.md`
 
 The lane's hygiene tests live in [`../tests/test_notebooks.py`](../tests/test_notebooks.py); run
 them with `uv run pytest`. The suite does not execute notebooks. Under `--nbmake`, **every**
-`*.ipynb` in this directory is executed — location is the only opt-in and there is no tag to drop —
-so never leave a half-written or scratch notebook here expecting it to be skipped; the full
-mechanics and the working-directory rule for fixture paths are in the lane's `README.md`.
+`*.ipynb` directly in this directory is executed — location is the only opt-in and there is no tag
+to drop — so never leave a half-written or scratch notebook here expecting it to be skipped; the
+full mechanics and the working-directory rule for fixture paths are in the lane's `README.md`.
+
+[`research/`](research/) is the single exception, and the CI command makes it by path: those are
+finished research records that need a GPU and external datasets the root environment does not
+install, so they are not executed. Because nothing runs them, nothing catches a broken one — the
+directory is for finished artifacts only, and `_*.ipynb` scratch does not belong there either.
+Two consequences for the rules above: the research records keep their original names rather than
+the `NN-topic` pattern, and they run in Colab, so they carry Colab's own `/content/drive` mount
+instead of a notebook-relative fixture path. They read no committed fixture. Rationale and run
+instructions: [`research/README.md`](research/README.md).
+
+```console
+uv run pytest --nbmake notebooks/ --ignore=notebooks/research -q
+```
+
+That is the command the `notebooks` CI job runs; the exclusion is visible in it, not hidden in a
+configuration file.
 
 ## Notes
 

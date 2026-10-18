@@ -7,12 +7,19 @@ import sys
 from pathlib import Path
 
 import pytest
+import yaml
 
 FIXTURE = "../data/samples/public_health_indicators.csv"
 
 
 def notebook_paths(repo_root: Path) -> list[Path]:
-    return sorted((repo_root / "notebooks").glob("*.ipynb"))
+    """Every committed notebook in the lane, research records included.
+
+    `rglob` rather than `glob`: the no-outputs and no-absolute-path rules are about the
+    file that is committed, and `notebooks/research/` commits two of them. The executed
+    set is a different question — see the CI-command test at the bottom.
+    """
+    return sorted((repo_root / "notebooks").rglob("*.ipynb"))
 
 
 def nbmake_collects(repo_root: Path, target: Path) -> bool:
@@ -42,10 +49,11 @@ def test_notebook_lane_has_a_template(repo_root: Path) -> None:
 def test_every_notebook_has_no_outputs(repo_root: Path) -> None:
     """Pinned Review Focus item: committed outputs leak data and bloat the repo.
 
-    Iterates the whole lane, not just the template. nbmake does not fail a notebook that
-    carries stored outputs, and the nbstripout pre-commit hook cannot run on the
-    maintainer's machine, so a committed output in a future numbered notebook would
-    otherwise be caught by nothing.
+    Iterates the whole lane, not just the template, and the research records under
+    `notebooks/research/` are included: they are committed files, even though CI does not
+    execute them. nbmake does not fail a notebook that carries stored outputs, and the
+    nbstripout pre-commit hook cannot run on the maintainer's machine, so a committed
+    output in a future numbered notebook would otherwise be caught by nothing.
     """
     for path in notebook_paths(repo_root):
         notebook = json.loads(path.read_text(encoding="utf-8"))
@@ -97,8 +105,10 @@ def test_no_notebook_uses_an_absolute_path(repo_root: Path) -> None:
     """Absolute paths break for every other clone and for the judges.
 
     Iterates the lane so a future notebook cannot slip an absolute path past a check that
-    only ever looked at the template. The path itself is resolved by the whole-repository
-    test in the final verification task.
+    only ever looked at the template. The assertion is limited to `C:\\` and `/Users/`,
+    which are dead wherever they are read; a research record's Colab `/content/drive`
+    mount is deliberately out of scope, because those notebooks are Colab documents and are
+    never presented as clean-clone notebooks — `notebooks/research/README.md` records that.
     """
     for path in notebook_paths(repo_root):
         notebook = json.loads(path.read_text(encoding="utf-8"))
@@ -122,3 +132,29 @@ def test_template_reads_the_sample_by_notebook_relative_path(repo_root: Path) ->
         "".join(cell["source"]) for cell in notebook["cells"] if cell["cell_type"] == "code"
     )
     assert FIXTURE in source
+
+
+def test_ci_executes_the_lane_but_not_the_research_records(repo_root: Path) -> None:
+    """Pin the one path exclusion in the notebooks job, in both directions.
+
+    `notebooks/research/` holds the team's research records, which need a GPU and external
+    datasets; the job ignores the directory by path, so the exclusion is visible in the
+    command rather than hidden in metadata. Dropping the `--ignore` would make CI execute
+    them against a locked environment that has no torch, and dropping `notebooks/` would
+    stop the executed lane running at all — either edit must fail here rather than in a
+    pull request.
+    """
+    workflow = yaml.safe_load((repo_root / ".github/workflows/ci.yml").read_text(encoding="utf-8"))
+    commands = [
+        step["run"]
+        for step in workflow["jobs"]["notebooks"]["steps"]
+        if "run" in step and "--nbmake" in step["run"]
+    ]
+    assert commands, "the notebooks job no longer runs nbmake"
+    command = commands[0]
+    assert "--nbmake notebooks/" in command, (
+        f"the notebooks job does not execute the lane: {command!r}"
+    )
+    assert "--ignore=notebooks/research" in command, (
+        f"the notebooks job no longer excludes the research records: {command!r}"
+    )

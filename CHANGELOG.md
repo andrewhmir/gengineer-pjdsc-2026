@@ -29,6 +29,16 @@ human-readable summary a judge or a returning teammate can read without walking 
   flashing, the pinned Adafruit bundle `20261010`, and the language subset. Templates
   `firmware/secrets.example.py` and `firmware/config.example.toml` are placeholders only.
   CI byte-compiles the lane; no board has been flashed yet.
+- Research records committed under `notebooks/research/`: the all-in-one Pa-Hinga
+  (`CSI-YASAT`) master v2.1 and the Resonance Network study on the High-Gamma Dataset
+  (`D01_10-17_Gengineer.ipynb`), with outputs stripped. They need a GPU and external
+  datasets, which the locked root environment deliberately does not install, so the
+  `notebooks` CI job excludes that one directory by path (`--ignore=notebooks/research`)
+  rather than executing it; the lane `README.md` and `notebooks/research/README.md` state
+  the rule and the reason, and a test pins both halves of the command. The three datasets
+  the records use — the MIMIC-III Waveform Database, CSI-Bench, and the High-Gamma Dataset —
+  with their descriptor and platform citations, are recorded in `docs/SOURCES.md`. No data
+  is committed.
 
 ### Changed
 
