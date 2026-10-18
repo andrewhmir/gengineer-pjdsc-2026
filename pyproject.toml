@@ -65,3 +65,9 @@ addopts = "-ra --strict-markers"
 # root project and fails on `readme = "README.md"` until Task 2 creates that file.
 [tool.uv]
 package = false
+
+# `webapp/` is a second environment with its own manifest and lockfile: a served application
+# with its own console script, not a notebook dependency. Excluding it here keeps a root
+# `uv sync` from resolving or installing the lane (design record REQ-118).
+[tool.uv.workspace]
+exclude = ["webapp"]

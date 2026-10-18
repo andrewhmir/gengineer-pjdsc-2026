@@ -46,7 +46,7 @@ boundaries, is in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 | [`firmware/`](firmware/) | Firmware | skeleton | CircuitPython for the sensor node; copied wholesale to the board's `CIRCUITPY` USB drive. Host tests only — not yet flashed. |
 | [`data/`](data/) | Data | structure | Data policy and committed sample fixtures. `raw/` and `interim/` hold local-only data that is never committed. No analysis yet. |
 | [`notebooks/`](notebooks/) | Data / analysis | template | Analysis notebooks, with outputs stripped on commit. A template is committed; no analysis yet. |
-| `webapp/` | Web | undecided | The user-facing application. Framework not yet chosen; [`webapp/README.md`](webapp/README.md) records the deferred decision. |
+| [`webapp/`](webapp/) | Web | built | The Hinigram screening station: FastAPI + Jinja2 + vanilla JS, no build step. `cd webapp && uv sync && uv run hinigram`, or read [`webapp/README.md`](webapp/README.md). |
 | [`submission/`](submission/) | Cross-cutting | present | The scored deliverables: the slide deck PDF, the linked demo video, and the pre-submission checklist with its hard limits. |
 | [`tests/`](tests/) | Cross-cutting | present | The pytest suite that gates every lane. |
 | [`docs/`](docs/) | Cross-cutting | present | Human-facing documentation: architecture, data policy, citations, owner setup. |
@@ -57,8 +57,8 @@ The **State** column says how far a lane has got, not how much it matters:
 - **skeleton**, **structure**, **template** — the lane's scaffolding, policy, and rules are
   committed; the feature the lane exists for is not implemented yet.
 - **present** — in place for the bootstrap, with nothing further sequenced.
-- **undecided** — a deliberate placeholder: the directory exists, and the decision it waits
-  on has not been made. `webapp/` is the only one, and its lane readme records why.
+- **built** — the lane's feature is implemented and runs from a clean clone; its README states
+  what is still deferred.
 
 `planned` is deliberately absent from this legend: every lane in the bootstrap has now
 landed, so no row is a promise about a directory that does not exist yet. If a future lane
@@ -87,6 +87,16 @@ uv run pytest
 `uv sync` creates `.venv/` and installs the pinned development dependencies from
 `uv.lock`. `uv run pytest` runs the whole test suite; it must pass from a clean clone
 with no manual setup, no hardware attached, and no network access.
+
+The screening station has its own environment and its own one-command start. It needs no
+hardware: it runs from a simulator.
+
+```console
+cd webapp && uv sync && uv run hinigram
+```
+
+That serves `http://127.0.0.1:8765`; press Start and the station runs a full session. What
+it does, the demo scenarios, and its honest limits are in [`webapp/README.md`](webapp/README.md).
 
 These are the only commands this repository provides:
 

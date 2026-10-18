@@ -12,6 +12,19 @@ human-readable summary a judge or a returning teammate can read without walking 
 
 ### Added
 
+- The screening station itself: a FastAPI + Jinja2 + vanilla-JS web application in `webapp/`
+  that serves the kiosk designed in `specs/2026-10-17-webapp-design.md`. A person presses Start,
+  waits through a 3 s settle and a 30 s capture, and reads one of three outcomes with the
+  breathing rate behind it. Includes the frame contract and ring buffers, the DSP and
+  phase-locking detector, the outcome rules and every patient-facing word, a simulator with
+  seven scripted scenarios, a committed replay fixture, and the canvas station scene. Runs with
+  no hardware and no Node toolchain: `cd webapp && uv sync && uv run hinigram`. The lane now has
+  its own manifest and lockfile, and the design records its own date and reasoning. Every
+  departure from the design record is recorded and argued in the build plan, including the
+  phase-locking value measuring phase diffusion rather than filter lag, the rate coming from the
+  phase slope rather than a spectral peak, the breath-pause detector using a wider band with
+  hysteresis, one monotonic clock for every component, and a capture with a hole longer than a
+  second inside it reported as unclear rather than measured.
 - Web application design record: `specs/2026-10-17-webapp-design.md` settles the framework
   decision the bootstrap deferred — FastAPI, Jinja2, and vanilla JS on canvas, one process,
   no Node toolchain — and specifies a **self-service respiratory screening station**: a person
@@ -20,7 +33,7 @@ human-readable summary a judge or a returning teammate can read without walking 
   detector, the patient station scene, the staff phase-space torus, the backend graph with real
   HTTP probes, the fault-localisation rules, and the acceptance criteria. Three deviations
   from the proposal are stated, including that the product screens one person per session while
-  multi-subject separation stays an offline result. Design only; no `webapp/` code has landed.
+  multi-subject separation stays an offline result.
 - Nine detection and accessibility sources recorded in `docs/SOURCES.md`, including the
   phase-locking value (Lachaux et al., 1999) and the Hopf oscillator (Righetti et al., 2006)
   the detector is built on, plus WCAG 2.2 as the accessibility standard for the interface.

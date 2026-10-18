@@ -15,7 +15,16 @@ REQUIRED_GITHUB_FILES = (
     ".github/ISSUE_TEMPLATE/feature_request.md",
     ".github/ISSUE_TEMPLATE/task.md",
 )
-EXPECTED_JOBS = {"changes", "lint", "test", "notebooks", "firmware", "secrets", "ci-success"}
+EXPECTED_JOBS = {
+    "changes",
+    "lint",
+    "test",
+    "notebooks",
+    "firmware",
+    "webapp",
+    "secrets",
+    "ci-success",
+}
 
 
 @pytest.mark.parametrize("name", REQUIRED_GITHUB_FILES)
@@ -140,6 +149,7 @@ def test_ci_does_not_run_lanes_that_do_not_exist(repo_root: Path) -> None:
         "test": "python",
         "notebooks": "notebooks",
         "firmware": "firmware",
+        "webapp": "webapp",
     }
     for job_name, output in own_output.items():
         guard = workflow["jobs"][job_name]["if"]

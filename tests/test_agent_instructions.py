@@ -59,7 +59,8 @@ def test_firmware_agents_protects_vendored_code(repo_root: Path) -> None:
     assert "match" in content
 
 
-def test_webapp_agents_withholds_framework_decision(repo_root: Path) -> None:
-    """An agent must not invent a framework that has not been chosen."""
+def test_webapp_agents_records_the_framework_decision(repo_root: Path) -> None:
+    """The lane file must state the decision, not leave an agent to invent one."""
     content = (repo_root / "webapp/AGENTS.md").read_text(encoding="utf-8").lower()
-    assert "no framework has been chosen" in content
+    assert "fastapi" in content
+    assert "no node" in content

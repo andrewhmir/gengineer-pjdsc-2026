@@ -1,0 +1,54 @@
+{
+  "regular": {
+    "label": "Regular resting breathing at 15 breaths per minute",
+    "rr_bpm": 15.0,
+    "cv": 0.02,
+    "noise": 0.02,
+    "gains": [0.35, 0.18, 0.08]
+  },
+  "watch": {
+    "label": "Regular but fast: 22 breaths per minute",
+    "rr_bpm": 22.0,
+    "cv": 0.05,
+    "noise": 0.02,
+    "gains": [0.35, 0.18, 0.08]
+  },
+  "tachypnea": {
+    "label": "Rapid and irregular breathing at about 28 per minute",
+    "rr_bpm": 28.0,
+    "cv": 0.22,
+    "noise": 0.02,
+    "gains": [0.35, 0.18, 0.08]
+  },
+  "unsteady": {
+    "label": "Very irregular intervals around 22 per minute",
+    "rr_bpm": 22.0,
+    "cv": 0.50,
+    "noise": 0.02,
+    "gains": [0.35, 0.18, 0.08],
+    "seed": 3
+  },
+  "apnea": {
+    "label": "Regular breathing with a twelve-second pause",
+    "rr_bpm": 22.0,
+    "cv": 0.02,
+    "noise": 0.02,
+    "gains": [0.35, 0.18, 0.08],
+    "apnea": [10.0, 22.0]
+  },
+  "motion": {
+    "label": "Regular breathing with a four-second movement",
+    "rr_bpm": 15.0,
+    "cv": 0.02,
+    "noise": 0.02,
+    "gains": [0.35, 0.18, 0.08],
+    "motion": [7.0, 11.0]
+  },
+  "absent": {
+    "label": "Nobody breathing in the zone: noise only",
+    "rr_bpm": 15.0,
+    "cv": 0.02,
+    "noise": 0.02,
+    "gains": [0.0, 0.0, 0.0]
+  }
+}
