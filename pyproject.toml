@@ -22,7 +22,7 @@ dev = [
     # in .pre-commit-config.yaml, or `ruff format --check` disagrees between a
     # contributor's machine and CI. Ruff >=0.14 also formats Python code blocks
     # inside Markdown, which changes what a whole-repo format check sees.
-    "ruff==0.17.0",
+    "ruff==0.17.1",
     "mypy>=1.11",
     "pytest>=8.3",
     "pytest-cov>=5.0",
