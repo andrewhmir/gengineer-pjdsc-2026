@@ -10,6 +10,9 @@ venv/
 # --- ESP-IDF ---
 .cache/
 eim-gui-x64.exe
+sdkconfig
+sdkconfig.old
+managed_components/
 
 # --- Tooling caches ---
 .pytest_cache/
