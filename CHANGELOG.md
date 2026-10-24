@@ -12,6 +12,9 @@ human-readable summary a judge or a returning teammate can read without walking 
 
 ### Added
 
+- **Universal firmware 1.2.0**: versions now have three parts, MAJOR.MINOR.PATCH, as in the review branch
+  `fix/universal-firmware-v2`, whose two fixes this version carries: the node's address is set before Wi-Fi starts,
+  and the receiver's `rx_state` column carries `rx_state` instead of repeating `sig_mode`.
 - **Universal firmware 1.1**: the transmitter prints a `HINIGRAM_TX` line with its version, ID, addresses, build
   and radio settings, and each release's `build-info.json` records the settings of both images, so the console can
   compare what a board runs with what it could write. What the boards send is unchanged.
