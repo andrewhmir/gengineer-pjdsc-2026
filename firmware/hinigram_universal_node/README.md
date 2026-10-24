@@ -36,3 +36,4 @@ Based on the v1.3.3 bundle's `hinigram_node`, itself based on Espressif's esp-cs
 | Version | Change |
 |---|---|
 | 1.0.0 | First version: the ID from NVS, the `hinigram id` and `hinigram info` commands, the version and chip address at start-up. |
+| 1.1.0 | Set the staged transmit address before `esp_wifi_start()`, the state `esp_wifi_set_mac()` is documented for; the radio settings, packet and start-up lines are unchanged. |

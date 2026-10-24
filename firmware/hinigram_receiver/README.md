@@ -1,7 +1,11 @@
 # Hinigram receiver
 
-The corner receiver from the Hinigram v1.3.3 bundle, copied unchanged so it is under version control next to
+The corner receiver from the Hinigram v1.3.3 bundle, copied so it is under version control next to
 [`../hinigram_universal_node`](../hinigram_universal_node). For the original ESP32, ESP-IDF 5.1 or newer.
+
+Two fixes on top of the bundle copy: the CSI column the header labels `rx_state` now carries
+`rx_ctrl.rx_state` (it repeated `sig_mode`, the label of column 6), and the capture callback tolerates a
+NULL source address before it compares the transmitter prefix. The line layout is otherwise unchanged.
 
 It prints one `CSI_DATA` line per packet from nodes `1a:00:00:00:00:<ID>` with an ID between
 `CONFIG_HINIGRAM_NODE_FIRST` and `CONFIG_HINIGRAM_NODE_LAST` (1 to 254 by default, so any universal node),

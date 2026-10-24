@@ -104,7 +104,7 @@ static void printer_task(void *arg)
                          (unsigned long)rec.seq, MAC2STR(rec.mac), r->rssi, r->rate, r->sig_mode, r->mcs, r->cwb,
                          r->smoothing, r->not_sounding, r->aggregation, r->stbc, r->fec_coding, r->sgi, r->noise_floor,
                          r->ampdu_cnt, r->channel, r->secondary_channel, (unsigned long)r->timestamp, r->ant,
-                         r->sig_len, r->sig_mode, rec.len, rec.first_word_invalid);
+                         r->sig_len, r->rx_state, rec.len, rec.first_word_invalid);
         if (n <= 0 || n >= (int)sizeof(line) - 8) {
             continue;
         }

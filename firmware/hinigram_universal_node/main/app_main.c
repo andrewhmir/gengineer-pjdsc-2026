@@ -131,11 +131,14 @@ static void wifi_init(void)
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
+    /* The staged address must be set while the interface is still disabled: esp_wifi_set_mac() is
+       documented for that state, and the boot log's "from 1a:00:00:00:00:<ID>" line is what the console
+       matches a board on. */
+    ESP_ERROR_CHECK(esp_wifi_set_mac(WIFI_IF_STA, s_mac));
     ESP_ERROR_CHECK(esp_wifi_set_bandwidth(WIFI_IF_STA, WIFI_BW_HT20));
     ESP_ERROR_CHECK(esp_wifi_start());
     ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE));
     ESP_ERROR_CHECK(esp_wifi_set_channel(CONFIG_HINIGRAM_CHANNEL, WIFI_SECOND_CHAN_NONE));
-    ESP_ERROR_CHECK(esp_wifi_set_mac(WIFI_IF_STA, s_mac));
 }
 
 static void espnow_init(void)
