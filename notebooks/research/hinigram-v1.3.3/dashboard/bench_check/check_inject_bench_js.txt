@@ -1,0 +1,21 @@
+ok   packed sample decodes to the 14925 packets of the CSV
+ok   360 s of a 5-chair room processed in 72.5 s (needs to run faster than real time several times over)
+     A1 adult: 165 updates, 165 windows full of breathing, rate shown in 87, within ±2/min 84, movement flagged in 48, pause alerts none
+     A2 adult: 165 updates, 136 windows full of breathing, rate shown in 76, within ±2/min 75, movement flagged in 28, pause alerts 112-120 s (5 updates)
+     A3 child_1_5y: 165 updates, 165 windows full of breathing, rate shown in 106, within ±2/min 106, movement flagged in 30, pause alerts none
+     B1 adult: 165 updates, 165 windows full of breathing, rate shown in 79, within ±2/min 79, movement flagged in 56, pause alerts none
+     B2 adult: 165 updates, 0 windows full of breathing, rate shown in 0, within ±2/min 0, movement flagged in 36, pause alerts 154-164 s (6 updates)
+ok   A1: at least 90% of shown rates within ±2/min of the injected truth (84/87)
+ok   A2: at least 90% of shown rates within ±2/min of the injected truth (75/76)
+ok   A3: at least 90% of shown rates within ±2/min of the injected truth (106/106)
+ok   B1: at least 90% of shown rates within ±2/min of the injected truth (79/79)
+ok   A2: the 18 s breath-hold from 100 s is flagged at 112 s (12 s after it began)
+ok   A2: the 8 s breath-hold from 300 s is not flagged (adult minimum is 10 s)
+ok   B1: simulated movement at 230 s is detected as movement
+ok   B2 (empty chair): no rate shown, or almost none (3 of 165 updates, at most 5%)
+ok   B2 (empty chair): never shows no breathing concern
+     B2 (empty chair) urgent: 154-164 s (6 updates)
+     B2 (empty chair) watch: 166-194 s (15 updates)
+KNOWN B2 (empty chair): breathing-pause alerts 154-164 s (6 updates)
+     wrote <folder>/bench_injected.csv (51776 packets) and bench_truth.json
+all checks passed; 1 known open failure(s) reported above (KNOWN)

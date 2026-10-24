@@ -1,0 +1,6 @@
+seat,profile,scenario,windows_full,board_shown,board_within2,python_shown,python_within2,same_state,paired_updates,python_pause_alerts_s
+A1,adult,"[[0, 150, 14], [150, 400, 24]]",166,87,84,89,85,161,165,none
+A2,adult,"[[0, 100, 16], [100, 118, 0], [118, 300, 16], [300, 308, 0], [308, 400, 16]]",137,76,75,70,68,150,165,112-120 s (5 updates)
+A3,child_1_5y,"[[0, 400, 34]]",166,106,106,101,101,161,165,none
+B1,adult,"[[0, 400, 18]]",166,79,79,80,80,163,165,none
+B2,adult,empty chair,0,0,0,0,0,130,165,152-200 s (25 updates)

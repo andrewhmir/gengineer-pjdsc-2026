@@ -1,0 +1,4 @@
+group,method,windows,shown_pct,within2_of_shown_pct,useful_pct,mae
+one person,fallback,440.0,33.18,94.54,31.36,0.56
+one person,model,440.0,44.85,95.42,42.77,0.68
+one person,v1.3.2,440.0,25.0,93.64,23.41,0.52

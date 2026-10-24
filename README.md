@@ -45,7 +45,7 @@ boundaries, is in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 |---|---|---|---|
 | [`firmware/`](firmware/) | Firmware | skeleton | CircuitPython for the sensor node; copied wholesale to the board's `CIRCUITPY` USB drive. Host tests only — not yet flashed. |
 | [`data/`](data/) | Data | structure | Data policy and committed sample fixtures. `raw/` and `interim/` hold local-only data that is never committed. No analysis yet. |
-| [`notebooks/`](notebooks/) | Data / analysis | template | Analysis notebooks, with outputs stripped on commit. A template is committed; no analysis yet. |
+| [`notebooks/`](notebooks/) | Data / analysis | template | Analysis notebooks, with outputs stripped on commit. A template is committed and the team's research records live in `notebooks/research/`; no analysis yet. |
 | `webapp/` | Web | undecided | The user-facing application. Framework not yet chosen; [`webapp/README.md`](webapp/README.md) records the deferred decision. |
 | [`submission/`](submission/) | Cross-cutting | present | The scored deliverables: the slide deck PDF, the linked demo video, and the pre-submission checklist with its hard limits. |
 | [`tests/`](tests/) | Cross-cutting | present | The pytest suite that gates every lane. |

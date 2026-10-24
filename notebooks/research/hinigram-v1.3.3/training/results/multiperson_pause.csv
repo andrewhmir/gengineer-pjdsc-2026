@@ -1,0 +1,15 @@
+bg,n,runs,pause_alert_pct,no_concern_during_pause_pct,runs_with_movement,paused_person
+busy,1,60,60.0,0.0,0,any
+busy,2,60,31.7,35.7,0,any
+busy,2,42,42.9,15.2,0,strongest on the link
+busy,2,18,5.6,83.3,0,weaker than another
+busy,3,60,16.7,76.7,0,any
+busy,3,22,31.8,61.8,0,strongest on the link
+busy,3,38,7.9,85.3,0,weaker than another
+quiet,1,60,61.7,1.0,0,any
+quiet,2,60,31.7,39.7,0,any
+quiet,2,41,46.3,17.6,0,strongest on the link
+quiet,2,19,0.0,87.4,0,weaker than another
+quiet,3,60,15.0,70.0,0,any
+quiet,3,33,24.2,55.2,0,strongest on the link
+quiet,3,27,3.7,88.1,0,weaker than another

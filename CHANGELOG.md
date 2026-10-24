@@ -29,6 +29,28 @@ human-readable summary a judge or a returning teammate can read without walking 
   flashing, the pinned Adafruit bundle `20261010`, and the language subset. Templates
   `firmware/secrets.example.py` and `firmware/config.example.toml` are placeholders only.
   CI byte-compiles the lane; no board has been flashed yet.
+- Research records committed under `notebooks/research/`: the all-in-one Pa-Hinga
+  (`CSI-YASAT`) master v2.1 and the Resonance Network study on the High-Gamma Dataset
+  (`D01_10-17_Gengineer.ipynb`), with outputs stripped. They need a GPU and external
+  datasets, which the locked root environment deliberately does not install, so the
+  `notebooks` CI job excludes that one directory by path (`--ignore=notebooks/research`)
+  rather than executing it; the lane `README.md` and `notebooks/research/README.md` state
+  the rule and the reason, and a test pins both halves of the command. The three datasets
+  the records use — the MIMIC-III Waveform Database, CSI-Bench, and the High-Gamma Dataset —
+  with their descriptor and platform citations, are recorded in `docs/SOURCES.md`. No data
+  is committed.
+- Hinigram v1.3.3 research bundle mirrored at `notebooks/research/hinigram-v1.3.3/`: the
+  audited CSI pipeline (`hinigram_live.py`, `hinigram_eval.py`, the DSP and style modules),
+  the training and validation study tables with their MLflow run artefacts, the injection
+  bench and waiting-room board sources, the firmware placement guide, and the literature
+  audit the rebuild answers. `docs/DATA.md` caps a committed file at 1 MB, so the 13 files
+  over the cap — both notebooks, the two raw session recordings, the held-out prediction
+  rows, the window-table archives, the built boards, and the packet fixture — are not
+  committed; they stay in a local `data/raw/hinigram-v1.3.3/`, and
+  `notebooks/research/README.md` lists them and the restore step. The raw recordings stay out
+  of the repository regardless of size, per the RA 10173 rule in `docs/DATA.md`. Nothing in
+  the directory is linted, formatted, or executed: `notebooks/research` is excluded from
+  `ruff` and from the `notebooks` CI job by path.
 
 ### Changed
 

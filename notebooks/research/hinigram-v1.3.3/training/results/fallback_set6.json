@@ -1,0 +1,155 @@
+{
+ "rule_sha256": "aa79f406b111782f9a690babc9dcf1d517d64ee251c6a536502c07ab9a2511ac",
+ "scored_at": "2026-10-22T08:02:48+00:00",
+ "rates": [
+  {
+   "method": "dsp",
+   "seed": 0,
+   "windows": 12600,
+   "shown": 0.30722222222222223,
+   "within2": 0.9948333763885301,
+   "mae": 0.20524081873066632,
+   "off5": 0.003099974166881943,
+   "useful": 0.30563492063492065,
+   "answered": 0.31196581196581197,
+   "answered_correct": 0.9713796477495108,
+   "urgent_no_concern": 0.001072961373390558,
+   "urgent_flagged": 0.33583690987124465,
+   "pause_no_concern": 2,
+   "pause_windows": 162,
+   "false_watch_or_urgent": 0.01221218674468897
+  },
+  {
+   "method": "dsp_rescreened",
+   "seed": 0,
+   "windows": 12600,
+   "shown": 0.30722222222222223,
+   "within2": 0.9948333763885301,
+   "mae": 0.20524081873066632,
+   "off5": 0.003099974166881943,
+   "useful": 0.30563492063492065,
+   "answered": 0.31196581196581197,
+   "answered_correct": 0.9713796477495108,
+   "urgent_no_concern": 0.001072961373390558,
+   "urgent_flagged": 0.33583690987124465,
+   "pause_no_concern": 2,
+   "pause_windows": 162,
+   "false_watch_or_urgent": 0.01221218674468897
+  },
+  {
+   "method": "fallback",
+   "seed": 0,
+   "windows": 12600,
+   "shown": 0.37666666666666665,
+   "within2": 0.9926253687315634,
+   "mae": 0.24335687863870822,
+   "off5": 0.002739148756847872,
+   "useful": 0.3738888888888889,
+   "answered": 0.38675213675213677,
+   "answered_correct": 0.9749408050513023,
+   "urgent_no_concern": 0.004291845493562232,
+   "urgent_flagged": 0.39324034334763946,
+   "pause_no_concern": 8,
+   "pause_windows": 162,
+   "false_watch_or_urgent": 0.01157613535173642
+  },
+  {
+   "method": "fallback",
+   "seed": 1,
+   "windows": 12600,
+   "shown": 0.3773809523809524,
+   "within2": 0.9917981072555205,
+   "mae": 0.24046896822331737,
+   "off5": 0.002733964248159832,
+   "useful": 0.3742857142857143,
+   "answered": 0.3875152625152625,
+   "answered_correct": 0.974399369830642,
+   "urgent_no_concern": 0.003218884120171674,
+   "urgent_flagged": 0.39216738197424894,
+   "pause_no_concern": 6,
+   "pause_windows": 162,
+   "false_watch_or_urgent": 0.01221218674468897
+  },
+  {
+   "method": "model",
+   "seed": 0,
+   "windows": 12600,
+   "shown": 0.5126984126984127,
+   "within2": 0.9371517027863777,
+   "mae": 0.6319292417912981,
+   "off5": 0.009442724458204335,
+   "useful": 0.4804761904761905,
+   "answered": 0.39285714285714285,
+   "answered_correct": 0.9681429681429682,
+   "urgent_no_concern": 0.009656652360515022,
+   "urgent_flagged": 0.3937768240343348,
+   "pause_no_concern": 17,
+   "pause_windows": 162,
+   "false_watch_or_urgent": 0.007887037272611627
+  },
+  {
+   "method": "model",
+   "seed": 1,
+   "windows": 12600,
+   "shown": 0.5304761904761904,
+   "within2": 0.9380610412926391,
+   "mae": 0.6240001880125802,
+   "off5": 0.011819269898264512,
+   "useful": 0.4976190476190476,
+   "answered": 0.40773809523809523,
+   "answered_correct": 0.9623806850084222,
+   "urgent_no_concern": 0.015021459227467811,
+   "urgent_flagged": 0.4071888412017167,
+   "pause_no_concern": 28,
+   "pause_windows": 162,
+   "false_watch_or_urgent": 0.008141457829792647
+  }
+ ],
+ "contrasts": [
+  {
+   "contrast": "fallback - dsp",
+   "n": 198,
+   "mean": 0.07167397717490706,
+   "ci": [
+    0.06086096049988692,
+    0.08248699384992719
+   ],
+   "dz": 0.9289799741706534,
+   "t_p": 1.5909663375289911e-28,
+   "w_p": 2.679658258391485e-19,
+   "wins": "107/107",
+   "holm_p": 8.038974775174455e-19,
+   "metric": "useful readings"
+  },
+  {
+   "contrast": "fallback - model",
+   "n": 198,
+   "mean": -0.12402580740305173,
+   "ci": [
+    -0.15094031476148131,
+    -0.09711130004462215
+   ],
+   "dz": -0.6458287120011703,
+   "t_p": 1.0895504107744702e-16,
+   "w_p": 9.838803328945616e-14,
+   "wins": "21/139",
+   "holm_p": 1.967760665789123e-13,
+   "metric": "useful readings"
+  },
+  {
+   "contrast": "fallback - dsp",
+   "n": 148,
+   "mean": -0.0006210820355557197,
+   "ci": [
+    -0.0024370791030232856,
+    0.0011949150319118464
+   ],
+   "dz": -0.05555730646630206,
+   "t_p": 0.5001763497157218,
+   "w_p": 0.5929800980174267,
+   "wins": "1/3",
+   "holm_p": 0.5929800980174267,
+   "metric": "off by more than 5"
+  }
+ ]
+}

@@ -1,0 +1,18 @@
+menu "Hinigram corner receiver"
+    config HINIGRAM_RECEIVER_ID
+        int "Receiver ID (printed in the HINIGRAM_RX status line)"
+        range 1 9
+        default 1
+    config HINIGRAM_CHANNEL
+        int "Wi-Fi channel (must match the nodes)"
+        range 1 13
+        default 6
+    config HINIGRAM_NODE_FIRST
+        int "First node ID this receiver logs"
+        range 1 254
+        default 1
+    config HINIGRAM_NODE_LAST
+        int "Last node ID this receiver logs"
+        range 1 254
+        default 254
+endmenu

@@ -148,7 +148,14 @@ jobs:
   # Being in notebooks/ is the entire opt-in for nbmake: its collection
   # predicate is `nbmake_enabled and p.match("*ipynb") and "_build" not in
   # p.parts`, so it reads no notebook metadata and there is no tag to opt out
-  # with. Every *.ipynb in the lane is executed here.
+  # with. Every *.ipynb directly in the lane is executed here.
+  #
+  # notebooks/research/ is the one explicit exception, and it is made by path on
+  # the command below rather than by notebook metadata, so it stays visible in
+  # review. Those are the team's research records: they need a GPU, torch, wfdb,
+  # and Kaggle/PhysioNet downloads that the locked root environment deliberately
+  # does not install, so running them here would fail on the first import. The
+  # lane README states the rule and notebooks/research/README.md the reason.
   notebooks:
     name: Execute notebooks
     needs: changes
@@ -165,8 +172,8 @@ jobs:
       - name: Install the locked environment
         run: uv sync --locked
 
-      - name: Run every notebook in the lane
-        run: uv run pytest --nbmake notebooks/ -q
+      - name: Run every notebook in the executed lane
+        run: uv run pytest --nbmake notebooks/ --ignore=notebooks/research -q
 
   # Honest scope: py_compile proves syntax and nothing else. It cannot prove
   # on-device behaviour, which needs a human flashing real hardware. The
