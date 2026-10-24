@@ -157,7 +157,7 @@ jobs:
           print(json.dumps(info, indent=2))
           PY
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: universal-firmware
           path: out/assets/
@@ -170,7 +170,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: universal-firmware
           path: assets
