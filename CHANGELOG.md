@@ -12,7 +12,12 @@ human-readable summary a judge or a returning teammate can read without walking 
 
 ### Added
 
-- **Universal transmitter firmware** `firmware/hinigram_universal_node/` v1.0.0 (ESP-IDF 5.1+, original
+- **Firmware releases built on GitHub**: `.github/workflows/firmware-release.yml` compiles the universal
+  firmware (transmitter and receiver) with ESP-IDF 5.3.2 on every push that changes it, and publishes each new
+  version as the release `universal-v<version>` with both images, their SHA-256 sums and a `build-info.json`.
+  The version is `firmware/hinigram_universal_node/version.txt` and every version has an entry in that folder's
+  `CHANGELOG.md`; a code change without a new version fails the workflow, so a published version never changes.
+- **Universal transmitter firmware** `firmware/hinigram_universal_node/` 1.0 (ESP-IDF 5.1+, original
   ESP32; branch `firmware/universal-node`): one image for any number of chair nodes. The node ID (1 to
   254) lives in the board's NVS flash, not in the build, and is set or changed over USB serial with
   `hinigram id N` without writing the firmware again; `hinigram info` repeats the start-up lines, which

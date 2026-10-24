@@ -1,0 +1,193 @@
+name: Firmware release
+
+# Builds the universal firmware (the transmitter firmware/hinigram_universal_node and the receiver
+# firmware/hinigram_receiver) with ESP-IDF and publishes each new version as the GitHub release
+# universal-v<version>, which the Hinigram live console downloads and writes to boards. The version is
+# firmware/hinigram_universal_node/version.txt, and that version's section of the CHANGELOG.md beside it becomes
+# the release notes. A published version never changes: a push that changes the firmware's code but not its version
+# fails in the check job.
+on:
+  push:
+    branches: [main, firmware/universal-node]
+    paths:
+      - firmware/hinigram_universal_node/**
+      - firmware/hinigram_receiver/**
+      - .github/workflows/firmware-release.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One run at a time, so two pushes cannot both publish the same version.
+concurrency:
+  group: firmware-release
+  cancel-in-progress: false
+
+env:
+  NODE_DIR: firmware/hinigram_universal_node
+  RX_DIR: firmware/hinigram_receiver
+
+jobs:
+  check:
+    name: Check the version and changelog
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.check.outputs.version }}
+      source: ${{ steps.check.outputs.source }}
+      publish: ${{ steps.check.outputs.publish }}
+      date: ${{ steps.check.outputs.date }}
+      subject: ${{ steps.check.outputs.subject }}
+      notes: ${{ steps.check.outputs.notes }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Compare with the published releases
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version=$(tr -d '[:space:]' < "$NODE_DIR/version.txt")
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+$ ]]; then
+            echo "::error file=$NODE_DIR/version.txt::A version looks like 1.0 or 1.2, not '$version'."
+            exit 1
+          fi
+          # What the boards run: every tracked file of both projects except the Markdown docs, so a README or
+          # changelog edit on its own needs no new version.
+          source=$(git ls-files -s -- "$NODE_DIR" "$RX_DIR" | grep -v '\.md$' | sha256sum | cut -c1-16)
+          tag="universal-v$version"
+          publish=true
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release download "$tag" --repo "$GITHUB_REPOSITORY" --pattern build-info.json --dir published
+            if [ "$(jq -r .source published/build-info.json)" != "$source" ]; then
+              echo "::error file=$NODE_DIR/version.txt::The firmware code changed, but $version is already released. Raise version.txt and add a '## <new version> (<date>)' section to $NODE_DIR/CHANGELOG.md."
+              exit 1
+            fi
+            echo "$tag is already published with this code: nothing to build."
+            publish=false
+          fi
+          # This version's changelog section: the lines under '## <version> (<date>)' up to the next heading.
+          # The comparisons append "" so that awk compares text: as numbers, 1.10 would equal 1.1.
+          awk -v v="$version" '/^## /{on = (($2 "") == (v "")); next} on' "$NODE_DIR/CHANGELOG.md" > notes.md
+          date=$(awk -v v="$version" '$1 == "##" && ($2 "") == (v "") {gsub(/[()]/, "", $3); print $3; exit}' "$NODE_DIR/CHANGELOG.md")
+          if [ "$publish" = true ] && ! grep -q '[^[:space:]]' notes.md; then
+            echo "::error file=$NODE_DIR/CHANGELOG.md::Add a '## $version (<date>)' section saying what changed in $version."
+            exit 1
+          fi
+          {
+            echo "version=$version"
+            echo "source=$source"
+            echo "publish=$publish"
+            echo "date=$date"
+            echo "subject=$(git log -1 --format=%s)"
+            echo "notes<<END_OF_NOTES"
+            sed -e '/./,$!d' notes.md
+            echo "END_OF_NOTES"
+          } >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build with ESP-IDF 5.3.2
+    needs: check
+    if: needs.check.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    container: espressif/idf:v5.3.2
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build the transmitter and the receiver
+        shell: bash
+        env:
+          VERSION: ${{ needs.check.outputs.version }}
+        run: |
+          set -eo pipefail
+          # The container runs as root over a workspace the runner owns, which git refuses without this.
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          . "$IDF_PATH/export.sh" > /dev/null
+          set -u
+          out="$GITHUB_WORKSPACE/out"
+          mkdir -p "$out/assets"
+          # PROJECT_VER stamps the release version into both images; the receiver has no version.txt of its own.
+          for role in tx rx; do
+            dir=$NODE_DIR
+            if [ "$role" = rx ]; then dir=$RX_DIR; fi
+            idf.py -C "$dir" -B "$out/build-$role" -D SDKCONFIG="$out/sdkconfig-$role" -D PROJECT_VER="$VERSION" build
+            (cd "$out/build-$role" && python -m esptool --chip esp32 merge_bin -o "$out/assets/universal-$VERSION-$role.bin" @flash_args)
+          done
+          idf.py --version | tail -n 1 > "$out/idf-version.txt"
+
+      - name: Write build-info.json and SHA256SUMS
+        shell: bash
+        env:
+          VERSION: ${{ needs.check.outputs.version }}
+          SOURCE: ${{ needs.check.outputs.source }}
+          CHANGELOG_DATE: ${{ needs.check.outputs.date }}
+          COMMIT_SUBJECT: ${{ needs.check.outputs.subject }}
+          NOTES: ${{ needs.check.outputs.notes }}
+        run: |
+          python3 - <<'PY'
+          import datetime, hashlib, json, os, pathlib
+
+          out = pathlib.Path(os.environ["GITHUB_WORKSPACE"], "out")
+          version = os.environ["VERSION"]
+          images = {}
+          for role, project in (("tx", "hinigram_universal_node"), ("rx", "hinigram_receiver")):
+              path = out / "assets" / f"universal-{version}-{role}.bin"
+              data = path.read_bytes()
+              images[role] = {"project": project, "file": path.name, "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest()}
+          server, repo, run = os.environ["GITHUB_SERVER_URL"], os.environ["GITHUB_REPOSITORY"], os.environ["GITHUB_RUN_ID"]
+          info = {
+              "set": "universal",
+              "version": version,
+              "tag": f"universal-v{version}",
+              "changelogDate": os.environ["CHANGELOG_DATE"] or None,
+              "notes": os.environ["NOTES"].strip(),
+              "commit": os.environ["GITHUB_SHA"],
+              "commitSubject": os.environ["COMMIT_SUBJECT"],
+              "branch": os.environ["GITHUB_REF_NAME"],
+              "repository": repo,
+              "run": {"id": int(run), "number": int(os.environ["GITHUB_RUN_NUMBER"]), "url": f"{server}/{repo}/actions/runs/{run}"},
+              "builtAt": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+              "idfVersion": (out / "idf-version.txt").read_text().strip(),
+              "target": "esp32",
+              "source": os.environ["SOURCE"],
+              "images": images,
+          }
+          (out / "assets" / "build-info.json").write_text(json.dumps(info, indent=2) + "\n")
+          (out / "assets" / "SHA256SUMS").write_text("".join(f"{i['sha256']}  {i['file']}\n" for i in images.values()))
+          print(json.dumps(info, indent=2))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: universal-firmware
+          path: out/assets/
+          if-no-files-found: error
+
+  release:
+    name: Publish the release
+    needs: [check, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: universal-firmware
+          path: assets
+
+      - name: Create universal-v${{ needs.check.outputs.version }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.check.outputs.version }}
+          NOTES: ${{ needs.check.outputs.notes }}
+        run: |
+          set -euo pipefail
+          run_url=$(jq -r .run.url assets/build-info.json)
+          idf=$(jq -r .idfVersion assets/build-info.json)
+          {
+            printf '%s\n\n' "$NOTES"
+            echo "---"
+            echo "Built by [workflow run #$GITHUB_RUN_NUMBER]($run_url) from \`${GITHUB_SHA:0:7}\` on \`$GITHUB_REF_NAME\` with $idf, for the original ESP32. Write it to a board from the Boards panel of the Hinigram live console."
+          } > notes.md
+          gh release create "universal-v$VERSION" assets/* --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "Universal firmware $VERSION" --notes-file notes.md
