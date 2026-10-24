@@ -14,7 +14,7 @@
  * At start-up, and in answer to "hinigram info", it prints one HINIGRAM_TX line for the console: version, ID, whether
  * the ID is stored, addresses, ESP-IDF version, build time and the radio settings, for example
  *
- *     HINIGRAM_TX,version=1.1,id=7,id_stored=1,mac=1a:00:00:00:00:07,chip=d0:ef:76:56:e8:68,idf=v5.3.2,
+ *     HINIGRAM_TX,version=1.2.0,id=7,id_stored=1,mac=1a:00:00:00:00:07,chip=d0:ef:76:56:e8:68,idf=v5.3.2,
  *     built=Oct 24 2026 18:02:11,channel=6,bandwidth=HT20,phy=MCS0_LGI,send_hz=30,jitter_us=2000,packet=1
  *
  * (one line). The radio settings are one string in the image, s_params, which the release workflow also reads from

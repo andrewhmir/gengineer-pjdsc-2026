@@ -4,15 +4,20 @@ One version number covers the pair that is released together: this transmitter a
 [`../hinigram_receiver`](../hinigram_receiver). Every change to either one's code gets a new version and an entry
 here, newest first, under a heading `## <version> (<date>)`.
 
-- **1.0 to 1.1, 1.2, ...** for a change that still works alongside boards running an earlier 1.x.
-- **1.x to 2.0** for a change that does not, such as a new packet layout, channel width or address scheme, so that
-  every board has to be written again.
+Versions have three parts, MAJOR.MINOR.PATCH, from 1.2.0:
+
+- **1.2.0 to 1.3.0, 1.4.0, ...** for a change that still works alongside boards running an earlier 1.x.
+- **1.2.0 to 1.2.1** for a fix that changes nothing else a board does, such as a corrected log line.
+- **1.x.y to 2.0.0** for a change that does not work alongside earlier boards, such as a new packet layout,
+  channel width or address scheme, so that every board has to be written again.
+
+The first two releases had two parts: 1.0 and 1.1 are 1.0.0 and 1.1.0.
 
 GitHub builds each version and publishes it as the release `universal-v<version>`, with this section as its notes.
 The release fails if the code changed while [`version.txt`](version.txt) did not, so a published version never
 changes.
 
-## 1.2 (2026-10-24)
+## 1.2.0 (2026-10-24)
 
 - The transmitter sets its `1a:00:00:00:00:<ID>` address before Wi-Fi starts, while the interface is still
   disabled, which is the state `esp_wifi_set_mac()` is documented for; it used to be set after

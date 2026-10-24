@@ -22,8 +22,8 @@ time and radio settings.
 
 ```text
 W (550) hinigram_node: node 7 sending 30 packets/s on channel 6 from 1a:00:00:00:00:07
-W (551) hinigram_node: universal v1.2, chip d0:ef:76:56:e8:68, id stored, IDF v5.3.2
-HINIGRAM_TX,version=1.2,id=7,id_stored=1,mac=1a:00:00:00:00:07,chip=d0:ef:76:56:e8:68,idf=v5.3.2,built=Oct 24 2026 18:02:11,channel=6,bandwidth=HT20,phy=MCS0_LGI,send_hz=30,jitter_us=2000,packet=1
+W (551) hinigram_node: universal v1.2.0, chip d0:ef:76:56:e8:68, id stored, IDF v5.3.2
+HINIGRAM_TX,version=1.2.0,id=7,id_stored=1,mac=1a:00:00:00:00:07,chip=d0:ef:76:56:e8:68,idf=v5.3.2,built=Oct 24 2026 18:02:11,channel=6,bandwidth=HT20,phy=MCS0_LGI,send_hz=30,jitter_us=2000,packet=1
 ```
 
 Channel and packet rate are build settings (`idf.py menuconfig`, *Hinigram universal node*); every node and
@@ -37,7 +37,7 @@ Based on the v1.3.3 bundle's `hinigram_node`, itself based on Espressif's esp-cs
 
 ## Versions and releases
 
-The version (1.0, 1.1, ...) covers this transmitter and the receiver it is released with,
+The version (MAJOR.MINOR.PATCH, such as 1.2.0) covers this transmitter and the receiver it is released with,
 [`../hinigram_receiver`](../hinigram_receiver). GitHub builds them: on a push that changes either project, the
 [firmware release workflow](../../.github/workflows/firmware-release.yml) compiles both with ESP-IDF 5.3.2 and
 publishes the release `universal-v<version>` with the two images, their SHA-256 sums and a `build-info.json` that

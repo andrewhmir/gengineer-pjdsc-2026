@@ -3,7 +3,7 @@
 The corner receiver from the Hinigram v1.3.3 bundle, copied so it is under version control next to
 [`../hinigram_universal_node`](../hinigram_universal_node). For the original ESP32, ESP-IDF 5.1 or newer.
 
-One fix on top of the bundle copy (universal 1.2): the CSI column the header labels `rx_state` carries
+One fix on top of the bundle copy (universal 1.2.0): the CSI column the header labels `rx_state` carries
 `rx_ctrl.rx_state`; the bundle's copy repeated `sig_mode` there. The line layout is otherwise unchanged, and the
 pipeline does not use that column.
 
