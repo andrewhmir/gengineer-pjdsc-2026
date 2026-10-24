@@ -12,6 +12,15 @@ GitHub builds each version and publishes it as the release `universal-v<version>
 The release fails if the code changed while [`version.txt`](version.txt) did not, so a published version never
 changes.
 
+## 1.2 (2026-10-24)
+
+- The transmitter sets its `1a:00:00:00:00:<ID>` address before Wi-Fi starts, while the interface is still
+  disabled, which is the state `esp_wifi_set_mac()` is documented for; it used to be set after
+  `esp_wifi_start()`. From the review in `fix/universal-firmware-v2` (83ec161).
+- Receiver: the CSI column the header labels `rx_state` now carries the packet's `rx_state`; it repeated
+  `sig_mode`. The line layout is unchanged and the pipeline does not read that column. Same review.
+- Radio settings, timing, packet and the `HINIGRAM_TX` line are unchanged from 1.1.
+
 ## 1.1 (2026-10-24)
 
 - The transmitter prints a `HINIGRAM_TX` line at start-up and in answer to `hinigram info`: its version, ID, whether

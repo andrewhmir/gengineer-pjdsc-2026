@@ -22,8 +22,8 @@ time and radio settings.
 
 ```text
 W (550) hinigram_node: node 7 sending 30 packets/s on channel 6 from 1a:00:00:00:00:07
-W (551) hinigram_node: universal v1.1, chip d0:ef:76:56:e8:68, id stored, IDF v5.3.2
-HINIGRAM_TX,version=1.1,id=7,id_stored=1,mac=1a:00:00:00:00:07,chip=d0:ef:76:56:e8:68,idf=v5.3.2,built=Oct 24 2026 18:02:11,channel=6,bandwidth=HT20,phy=MCS0_LGI,send_hz=30,jitter_us=2000,packet=1
+W (551) hinigram_node: universal v1.2, chip d0:ef:76:56:e8:68, id stored, IDF v5.3.2
+HINIGRAM_TX,version=1.2,id=7,id_stored=1,mac=1a:00:00:00:00:07,chip=d0:ef:76:56:e8:68,idf=v5.3.2,built=Oct 24 2026 18:02:11,channel=6,bandwidth=HT20,phy=MCS0_LGI,send_hz=30,jitter_us=2000,packet=1
 ```
 
 Channel and packet rate are build settings (`idf.py menuconfig`, *Hinigram universal node*); every node and
