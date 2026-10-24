@@ -125,15 +125,37 @@ jobs:
           NOTES: ${{ needs.check.outputs.notes }}
         run: |
           python3 - <<'PY'
-          import datetime, hashlib, json, os, pathlib
+          import datetime, hashlib, json, os, pathlib, re
 
           out = pathlib.Path(os.environ["GITHUB_WORKSPACE"], "out")
           version = os.environ["VERSION"]
+
+
+          def tx_params(data):
+              """The radio settings string the transmitter keeps in its image (from 1.1), as the board prints it."""
+              found = set(re.findall(rb"channel=\d+,bandwidth=[\x21-\x7e]*", data))
+              if len(found) > 1:
+                  raise SystemExit(f"more than one radio settings string in the transmitter image: {found}")
+              return dict(kv.split("=", 1) for kv in found.pop().decode().split(",")) if found else None
+
+
+          def rx_params(data):
+              """The receiver's settings, from the configuration it was built with."""
+              cfg = dict(re.findall(r"^CONFIG_(\w+)=\"?([^\"\n]*)\"?$", (out / "sdkconfig-rx").read_text(), re.M))
+              bw = re.search(rb"bandwidth=(\w+),nodes=", data)
+              return {
+                  "channel": cfg.get("HINIGRAM_CHANNEL"), "bandwidth": bw.group(1).decode() if bw else None,
+                  "nodes": f"{cfg.get('HINIGRAM_NODE_FIRST')}-{cfg.get('HINIGRAM_NODE_LAST')}",
+                  "baud": cfg.get("ESP_CONSOLE_UART_BAUDRATE"), "receiver": cfg.get("HINIGRAM_RECEIVER_ID"),
+              }
+
+
           images = {}
           for role, project in (("tx", "hinigram_universal_node"), ("rx", "hinigram_receiver")):
               path = out / "assets" / f"universal-{version}-{role}.bin"
               data = path.read_bytes()
-              images[role] = {"project": project, "file": path.name, "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest()}
+              params = tx_params(data) if role == "tx" else rx_params(data)
+              images[role] = {"project": project, "file": path.name, "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest(), "params": params}
           server, repo, run = os.environ["GITHUB_SERVER_URL"], os.environ["GITHUB_REPOSITORY"], os.environ["GITHUB_RUN_ID"]
           info = {
               "set": "universal",

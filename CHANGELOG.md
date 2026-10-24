@@ -12,6 +12,9 @@ human-readable summary a judge or a returning teammate can read without walking 
 
 ### Added
 
+- **Universal firmware 1.1**: the transmitter prints a `HINIGRAM_TX` line with its version, ID, addresses, build
+  and radio settings, and each release's `build-info.json` records the settings of both images, so the console can
+  compare what a board runs with what it could write. What the boards send is unchanged.
 - **Firmware releases built on GitHub**: `.github/workflows/firmware-release.yml` compiles the universal
   firmware (transmitter and receiver) with ESP-IDF 5.3.2 on every push that changes it, and publishes each new
   version as the release `universal-v<version>` with both images, their SHA-256 sums and a `build-info.json`.
