@@ -12,6 +12,18 @@ human-readable summary a judge or a returning teammate can read without walking 
 
 ### Added
 
+- **Universal transmitter firmware** `firmware/hinigram_universal_node/` v1.0.0 (ESP-IDF 5.1+, original
+  ESP32; branch `firmware/universal-node`): one image for any number of chair nodes. The node ID (1 to
+  254) lives in the board's NVS flash, not in the build, and is set or changed over USB serial with
+  `hinigram id N` without writing the firmware again; `hinigram info` repeats the start-up lines, which
+  give the version, the chip address and whether the ID is stored. Radio settings, timing and packet are
+  those of the v1.3.3 bundle's `hinigram_node`: 20 MHz, MCS0, 30 packets a second from
+  `1a:00:00:00:00:<ID>`, a steady period with up to 2 ms of random offset. Compiled with ESP-IDF 5.3.2;
+  not yet run on a board.
+- `firmware/hinigram_receiver/`, the v1.3.3 bundle's corner receiver copied unchanged so it is under
+  version control next to the universal node. It accepts nodes 1 to 254 (the team's `csi_rx` accepts
+  1 to 3), writes through the UART driver with a 64-packet queue, and reports how many lines it logged
+  and dropped every 60 s. One receiver at 921,600 baud carries about five nodes at 30 packets a second.
 - Web application design record: `specs/2026-10-17-webapp-design.md` settles the framework
   decision the bootstrap deferred — FastAPI, Jinja2, and vanilla JS on canvas, one process,
   no Node toolchain — and specifies a **self-service respiratory screening station**: a person
