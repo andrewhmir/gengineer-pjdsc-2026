@@ -1,0 +1,6 @@
+# Settings the team's csi_rx needs that its folder does not record (its sdkconfig is gitignored).
+# CSI must be on, or esp_wifi_set_csi_config fails and the board restarts at boot.
+CONFIG_ESP_WIFI_CSI_ENABLED=y
+# 921,600 baud carries three transmitters' CSI_DATA lines; the default 115,200 carries about 19 a second.
+CONFIG_ESP_CONSOLE_UART_CUSTOM=y
+CONFIG_ESP_CONSOLE_UART_BAUDRATE=921600

@@ -7,6 +7,11 @@ dist/
 .venv/
 venv/
 
+# --- Node (webapp/) ---
+node_modules/
+# firmware images built by webapp/tools/build-firmware.js: build output, rebuilt from the firmware source
+webapp/.firmware/
+
 # --- Tooling caches ---
 .pytest_cache/
 .mypy_cache/

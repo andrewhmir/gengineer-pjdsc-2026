@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hinigram live</title>
+  <meta name="description" content="Live breathing readings from the Hinigram Wi-Fi sensors, with link health and placement help.">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/app.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><use href="/icon.svg#mark"></use></svg>
+      <span class="brand-name">Hinigram <em>live</em></span>
+    </div>
+    <p class="link-state" id="link-state" role="status"><span class="dot"></span><span id="link-text">Starting</span></p>
+    <div class="actions">
+      <button type="button" class="btn" id="boards-toggle" aria-expanded="false" aria-controls="boards">Boards</button>
+      <button type="button" class="btn btn-record" id="record" aria-pressed="false"><span class="rec-dot" aria-hidden="true"></span><span id="record-label">Record</span></button>
+      <button type="button" class="btn" id="reset" title="Clear all readings and start the 30 seconds again, for example after moving a board">Start over</button>
+    </div>
+  </header>
+
+  <p class="sim-banner" id="sim-banner" hidden>Simulated data. No receiver is attached, and nothing here is a real measurement.</p>
+
+  <main>
+    <section class="status-card" aria-label="Is it working?">
+      <p class="verdict" id="verdict" data-level="off" aria-live="polite"><span class="verdict-mark" aria-hidden="true"></span><span id="verdict-text">Checking</span></p>
+      <p class="verdict-next" id="verdict-next"></p>
+      <ol class="checks" id="checks"></ol>
+    </section>
+
+    <section class="panel boards" id="boards" aria-labelledby="boards-h" hidden>
+      <div class="boards-head">
+        <h2 id="boards-h">Boards on USB</h2>
+        <label class="boards-set">Firmware to write <select id="boards-set"></select></label>
+        <button type="button" class="btn" id="boards-identify-all">Identify all</button>
+      </div>
+      <p class="panel-note">Choose what each board does, and the console writes the team&rsquo;s firmware for that role. <strong>Identify</strong> restarts a board and reads what it prints; it writes nothing. The live readings pause for a few seconds while a board is identified or written.</p>
+      <p class="panel-note" id="boards-images"></p>
+      <p class="boards-warn" id="boards-warn" hidden></p>
+      <ul class="board-list" id="board-list"></ul>
+      <p class="board-empty" id="board-empty" hidden>No ESP32 found on USB. Connect a board with a data cable: some charging cables carry power only.</p>
+      <p class="panel-note">Only this step needs a data cable. Afterwards a transmitter just needs power, and only the receiver stays on this computer.</p>
+    </section>
+
+    <section class="lanes" id="lanes" aria-label="Transmitters">
+      <div class="lane lane-empty" id="lanes-empty">
+        <h2>No transmitters heard yet</h2>
+        <p>Power TX1, TX2 and TX3. Each one appears here a few seconds after the receiver hears it.</p>
+      </div>
+    </section>
+
+    <div class="lower">
+      <section class="panel" aria-labelledby="rec-h">
+        <h2 id="rec-h">Recordings</h2>
+        <p class="panel-note">Raw receiver data, saved on this computer in <code>data/raw/recordings/</code>. The files open in the v1.3.3 board and the Python pipeline.</p>
+        <ul class="rec-list" id="rec-list"></ul>
+        <p class="rec-empty" id="rec-empty">No recordings yet. Press Record to save what the receiver sends.</p>
+      </section>
+
+      <section class="panel" aria-labelledby="place-h">
+        <h2 id="place-h">Placing the boards</h2>
+        <ol class="steps">
+          <li><strong>Receiver</strong> in a corner, 0.8 to 1.0 m off the floor, antenna end facing the room. Its USB cable goes to this computer.</li>
+          <li><strong>Transmitter</strong> on the back of the chair, centred, 25 to 35 cm above the seat. Fix it firmly: a node that wobbles makes its own &ldquo;breathing&rdquo;.</li>
+          <li><strong>Chair</strong> 2 to 4 m from the receiver, facing it, so the straight line from the transmitter to the receiver passes through the chest.</li>
+          <li><strong>Sit still</strong> and breathe normally for 30 seconds. While you adjust a board, watch <em>Pattern strength</em>: it rises when the placement works.</li>
+        </ol>
+      </section>
+    </div>
+  </main>
+
+  <template id="lane-tpl">
+    <article class="lane">
+      <header class="lane-head">
+        <h2 class="lane-name"></h2>
+        <label class="who">Who sits here <select class="who-select"></select></label>
+      </header>
+      <p class="stale-note" hidden></p>
+
+      <svg class="geo" viewBox="0 0 320 84" role="img">
+        <title>Side view: receiver, person on the chair, transmitter on the chair back</title>
+        <g class="geo-rx"><rect x="6" y="30" width="22" height="16" rx="3"/><text x="17" y="62">RX</text></g>
+        <g class="geo-chair">
+          <path class="geo-person" d="M214 22 a9 9 0 1 1 0.1 0 Z M200 40 q14 -8 28 0 l3 24 h-34 Z"/>
+          <path class="geo-seat" d="M188 66 h52 M240 30 v46 M196 66 v10"/>
+        </g>
+        <g class="geo-tx"><rect x="244" y="30" width="22" height="16" rx="3"/><text x="255" y="62">TX</text></g>
+        <line class="geo-link" x1="28" y1="38" x2="244" y2="38"/>
+        <circle class="geo-chest" cx="214" cy="38" r="5"/>
+      </svg>
+
+      <div class="reading">
+        <p class="rate"><span class="rate-num">&ndash;</span><span class="rate-unit">breaths<br>a minute</span><span class="rate-held"></span></p>
+        <p class="status"><span class="status-mark" aria-hidden="true"></span><span class="status-text">Collecting</span></p>
+        <p class="reason"></p>
+        <p class="model" title="ResoNet, the trained model in the v1.3.3 bundle (variant lin_sync-e80, six models). Shown for comparison only: it never changes the status or the alerts, because in the bundle's tests it missed more breath-holds than the rule-based pipeline."><span class="model-label">Model estimate</span><span class="model-value">&ndash;</span><span class="model-note"></span></p>
+        <p class="sr-only" aria-live="polite"></p>
+      </div>
+
+      <figure class="chart">
+        <figcaption>Live signal <span class="cap-note">raw, from the first packet: the part of the channel that moves most</span></figcaption>
+        <canvas class="live" role="img"></canvas>
+        <p class="chart-empty live-empty">Waiting for packets.</p>
+      </figure>
+
+      <figure class="chart">
+        <figcaption>Breathing <span class="cap-note">analysed, last 60 s; the older part stays fixed</span></figcaption>
+        <canvas class="trace" role="img"></canvas>
+        <p class="chart-empty trace-empty"></p>
+      </figure>
+
+      <figure class="chart">
+        <figcaption>Pattern strength <span class="cap-note">last 2 min; readings need it above the line</span></figcaption>
+        <canvas class="quality" role="img"></canvas>
+      </figure>
+
+      <div class="next">
+        <p class="next-title"></p>
+        <p class="next-detail"></p>
+      </div>
+
+      <dl class="health">
+        <div><dt>Packets</dt><dd class="h-rate"></dd></div>
+        <div><dt>Signal (RSSI)</dt><dd class="h-rssi"></dd></div>
+        <div><dt>Lost, 5 s</dt><dd class="h-loss"></dd></div>
+        <div><dt>Gain steps</dt><dd class="h-steps"></dd></div>
+      </dl>
+      <p class="lane-foot"><span class="mac"></span><span class="estimate"></span></p>
+    </article>
+  </template>
+
+  <script src="/app.js"></script>
+  <script src="/boards.js"></script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+{
+  "name": "hinigram-live",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Hinigram live console: reads the CSI receiver over USB serial, runs the Hinigram v1.3.2 pipeline and serves a local web UI.",
+  "license": "Apache-2.0",
+  "main": "src/server.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "demo": "node src/server.js --demo",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "serialport": "^13.0.0"
+  }
+}
