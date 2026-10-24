@@ -1,0 +1,184 @@
+{
+ "arm": "lin_power",
+ "base_arm": "lin_power",
+ "fold": 1,
+ "seed": 0,
+ "pool": true,
+ "hist": [
+  {
+   "epoch": 1,
+   "train": -0.09735979981282178,
+   "val": -0.30649271099655717,
+   "sec": 21.932034015655518
+  },
+  {
+   "epoch": 2,
+   "train": -0.41926794297554915,
+   "val": -0.5336946328481038,
+   "sec": 37.63225507736206
+  },
+  {
+   "epoch": 3,
+   "train": -0.520668055380092,
+   "val": -0.6580212142732408,
+   "sec": 53.10552620887756
+  },
+  {
+   "epoch": 4,
+   "train": -0.569684505813262,
+   "val": -0.6274543329521461,
+   "sec": 69.2517101764679
+  },
+  {
+   "epoch": 5,
+   "train": -0.5860960073330823,
+   "val": -0.6879454056421915,
+   "sec": 87.2669267654419
+  },
+  {
+   "epoch": 6,
+   "train": -0.6271536588668823,
+   "val": -0.7310851732889811,
+   "sec": 102.51435422897339
+  },
+  {
+   "epoch": 7,
+   "train": -0.6457876913687762,
+   "val": -0.7410383952988518,
+   "sec": 118.02695894241333
+  },
+  {
+   "epoch": 8,
+   "train": -0.6743554190677755,
+   "val": -0.6232168670053835,
+   "sec": 133.95828127861023
+  },
+  {
+   "epoch": 9,
+   "train": -0.7078296941869399,
+   "val": -0.8860918508635627,
+   "sec": 150.12137651443481
+  },
+  {
+   "epoch": 10,
+   "train": -0.7269154208547929,
+   "val": -0.7049852870128773,
+   "sec": 165.90171885490417
+  },
+  {
+   "epoch": 11,
+   "train": -0.7477444785482743,
+   "val": -0.859125390317705,
+   "sec": 181.3146162033081
+  },
+  {
+   "epoch": 12,
+   "train": -0.7760552998851328,
+   "val": -0.677018674214681,
+   "sec": 197.21708607673645
+  },
+  {
+   "epoch": 13,
+   "train": -0.7715372930554782,
+   "val": -0.8151713887850444,
+   "sec": 213.02308416366577
+  },
+  {
+   "epoch": 14,
+   "train": -0.7950303891125847,
+   "val": -0.7101341591940986,
+   "sec": 229.16868662834167
+  },
+  {
+   "epoch": 15,
+   "train": -0.8128362368134892,
+   "val": -0.6935087857423006,
+   "sec": 245.15484714508057
+  },
+  {
+   "epoch": 16,
+   "train": -0.8349594081149382,
+   "val": -0.5957482536633809,
+   "sec": 260.9939832687378
+  },
+  {
+   "epoch": 17,
+   "train": -0.8481182715472053,
+   "val": -0.6362196127573649,
+   "sec": 276.9829728603363
+  }
+ ],
+ "calibration": {
+  "tau": 0.03797369188998812,
+  "val_coverage": 0.06516290726817042,
+  "val_within": 0.9615384615384616
+ },
+ "test_files": [
+  "adult_10_r0_s51.npz",
+  "adult_10_r0_s52.npz",
+  "adult_10_r1_s51.npz",
+  "adult_10_r1_s52.npz",
+  "adult_10_r2_s51.npz",
+  "adult_10_r2_s52.npz",
+  "adult_17_r0_s51.npz",
+  "adult_17_r0_s52.npz",
+  "adult_17_r1_s51.npz",
+  "adult_17_r1_s52.npz",
+  "adult_17_r2_s51.npz",
+  "adult_17_r2_s52.npz",
+  "adult_23_r0_s51.npz",
+  "adult_23_r0_s52.npz",
+  "adult_23_r1_s51.npz",
+  "adult_23_r1_s52.npz",
+  "adult_23_r2_s51.npz",
+  "adult_23_r2_s52.npz",
+  "adult_32_r0_s51.npz",
+  "adult_32_r0_s52.npz",
+  "adult_32_r1_s51.npz",
+  "adult_32_r1_s52.npz",
+  "adult_32_r2_s51.npz",
+  "adult_32_r2_s52.npz",
+  "child_34_r0_s51.npz",
+  "child_34_r0_s52.npz",
+  "child_34_r1_s51.npz",
+  "child_34_r1_s52.npz",
+  "child_34_r2_s51.npz",
+  "child_34_r2_s52.npz",
+  "child_pause_25s_r0_s51.npz",
+  "child_pause_25s_r0_s52.npz",
+  "child_pause_25s_r1_s51.npz",
+  "child_pause_25s_r1_s52.npz",
+  "child_pause_25s_r2_s51.npz",
+  "child_pause_25s_r2_s52.npz",
+  "infant_55_r0_s51.npz",
+  "infant_55_r0_s52.npz",
+  "infant_55_r1_s51.npz",
+  "infant_55_r1_s52.npz",
+  "infant_55_r2_s51.npz",
+  "infant_55_r2_s52.npz",
+  "pause_12s_r0_s51.npz",
+  "pause_12s_r0_s52.npz",
+  "pause_12s_r1_s51.npz",
+  "pause_12s_r1_s52.npz",
+  "pause_12s_r2_s51.npz",
+  "pause_12s_r2_s52.npz",
+  "pause_14s_r0_s51.npz",
+  "pause_14s_r0_s52.npz",
+  "pause_14s_r1_s51.npz",
+  "pause_14s_r1_s52.npz",
+  "pause_14s_r2_s51.npz",
+  "pause_14s_r2_s52.npz",
+  "pause_18s_r0_s51.npz",
+  "pause_18s_r0_s52.npz",
+  "pause_18s_r1_s51.npz",
+  "pause_18s_r1_s52.npz",
+  "pause_18s_r2_s51.npz",
+  "pause_18s_r2_s52.npz",
+  "short_8s_r0_s51.npz",
+  "short_8s_r0_s52.npz",
+  "short_8s_r1_s51.npz",
+  "short_8s_r1_s52.npz",
+  "short_8s_r2_s51.npz",
+  "short_8s_r2_s52.npz"
+ ]
+}

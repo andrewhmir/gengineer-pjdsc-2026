@@ -1,0 +1,5 @@
+rate (/min),|C| as is,angle as is (deg),|C| fixed shift,angle fixed shift (deg),|C| random phase,angle random phase
+10,0.81,-6.92,0.43,-76.39,0.81,uniform
+20,0.96,-112.95,0.99,102.96,0.96,uniform
+30,0.96,-30.05,0.62,114.02,0.96,uniform
+45,0.97,2.83,0.76,-152.9,0.97,uniform

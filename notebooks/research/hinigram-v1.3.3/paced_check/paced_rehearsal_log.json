@@ -1,0 +1,39 @@
+{
+ "kind": "hinigram-paced-check",
+ "version": 1,
+ "seat": "A",
+ "mac": "1a:00:00:00:00:01",
+ "plan": "short",
+ "startedAt": "2026-10-18T18:44:34.584Z",
+ "complete": true,
+ "steps": [
+  {
+   "rate": 10,
+   "start_s": 0,
+   "end_s": 50
+  },
+  {
+   "rest": true,
+   "start_s": 50,
+   "end_s": 60
+  },
+  {
+   "rate": 16,
+   "start_s": 60,
+   "end_s": 110
+  },
+  {
+   "rest": true,
+   "start_s": 110,
+   "end_s": 120
+  },
+  {
+   "rate": 22,
+   "start_s": 120,
+   "end_s": 170
+  }
+ ],
+ "liveStart_t": null,
+ "source": "file",
+ "note": "Rehearsal: breathing injected to follow the pacer on the first sensor of the real format sample."
+}

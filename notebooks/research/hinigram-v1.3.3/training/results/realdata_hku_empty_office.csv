@@ -1,0 +1,5 @@
+sensor,windows,rate_shown,pause_alerts,states
+1a:00:00:00:0b:01,21,0,0,no_reading: 21
+1a:00:00:00:0b:02,21,0,0,no_reading: 21
+1a:00:00:00:0b:03,21,0,0,no_reading: 21
+1a:00:00:00:0b:04,21,0,0,no_reading: 21

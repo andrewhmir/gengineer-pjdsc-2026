@@ -1,0 +1,9 @@
+method,windows,shown
+DSP v1.3.2 (rules),216,1
+ShallowNet (learned band power),216,0
+"ShallowNet, no pooling",216,0
+"ResoNet, power readout",216,0
+"ResoNet, power readout, no pooling",216,0
+"ResoNet, shift surrogate (paper's control)",216,1
+"ResoNet, random-phase surrogate",216,0
+"ResoNet, sync readout",216,1

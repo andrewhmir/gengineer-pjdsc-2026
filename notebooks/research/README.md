@@ -85,9 +85,49 @@ initialisation and sampling step, so a re-run on the same data reproduces the nu
   numbers. The same pass normalises cell ids, so
   `uv run nbstripout --verify notebooks/research/<name>.ipynb` exits 0.
 
+## The Hinigram v1.3.3 bundle
+
+[`hinigram-v1.3.3/`](hinigram-v1.3.3/) is the v1.3.3 research bundle for the ESP32 Wi-Fi
+CSI breathing work: the audited pipeline, its training and validation studies, the injection
+bench and waiting-room board, the firmware placement guide, and the literature audit the
+rebuild answers. Its own entry point is
+[`hinigram-v1.3.3/README.md`](hinigram-v1.3.3/README.md). It is filed here for the same reason
+as the two notebooks: it is the record of work that produced the method, and no job executes
+it. `notebooks/research/` is excluded from `ruff` (`pyproject.toml`) and from the `notebooks`
+CI job by path, so nothing in the bundle is linted, formatted, or executed.
+
+**The mirror is deliberately not byte-complete.** [`docs/DATA.md`](../../docs/DATA.md) caps a
+committed file at 1 MB, so the 13 files over that cap are **not committed**. They live in a
+local checkout at `data/raw/hinigram-v1.3.3/`, gitignored like everything else under
+`data/raw/`:
+
+| Original-bundle file | Size | Why it is local-only |
+|---|---|---|
+| `Hinigram_v1_3_3.ipynb` | 3.6 MB | The all-in-one notebook, over the cap |
+| `training/Hinigram_training.ipynb` | 1.3 MB | The training notebook, over the cap |
+| `demo_20261019_024431.csv` | 7.0 MB | A raw session recording |
+| `paced_check/paced_rehearsal.csv` | 7.0 MB | A raw paced-breathing recording |
+| `heldout2_rows.json`, `heldout3_rows.json`, `heldout4_rows.json` | 1.6–2.7 MB each | Per-window prediction rows |
+| `v132_on_heldout3_rows.json` | 2.6 MB | Per-window prediction rows |
+| `training/results/window_table.csv.gz`, `training/results/fallback_window_table.csv.gz` | 2.6–3.8 MB each | Window tables |
+| `dashboard/hinigram_dashboard.html`, `dashboard/Hinigram_dashboard_standalone.html` | 1.8 MB each | Built boards |
+| `dashboard/sample_packets.b64` | 1.1 MB | Packet fixture |
+
+To restore the full bundle, copy those files from the original `Hinigram_v1.3.3` download into
+`data/raw/hinigram-v1.3.3/` at the same relative paths and read them there — never into this
+directory, and never into a commit. The bundle's own `README.md` and `DEMO.md` point at those
+files, so their instructions apply once the local-only files are restored.
+
+Size is not the only reason for the split. A raw breathing recording is the kind of data
+[`docs/DATA.md`](../../docs/DATA.md) keeps out of a public repository under RA 10173, so the
+two recordings stay local no matter what the size cap allows. What *is* committed from the
+studies is aggregate: result tables, per-window prediction summaries, MLflow run artefacts,
+and the audit prose. The bundle was supplied without a licence file of its own; its figure
+fonts are third-party, under the SIL Open Font License that the bundle `README.md` names.
+
 ## Data and privacy
 
-No data is committed here. Everything these notebooks read is retrieved at run time, and
+For the two notebooks, no data is committed. Everything they read is retrieved at run time, and
 every dataset is cited in [`docs/SOURCES.md`](../../docs/SOURCES.md) before it appears:
 
 - MIMIC-III Waveform Database (PhysioNet) — de-identified ICU waveforms.

@@ -1,0 +1,9 @@
+<folder>/bench_injected.csv: 51776 packets, 5 chairs, 360 s
+seat  profile        full | board shown within 2 | python shown within 2 | same state  pause alerts (python)
+A1    adult           166 |          87       84 |           89       85 |  161/165    none
+A2    adult           137 |          76       75 |           70       68 |  150/165    112-120 s (5 updates)
+A3    child_1_5y      166 |         106      106 |          101      101 |  161/165    none
+B1    adult           166 |          79       79 |           80       80 |  163/165    none
+B2    adult             0 |           0        0 |            0        0 |  130/165    152-200 s (25 updates)
+B2 (empty chair), board: rate shown in 3 of 165 updates; urgent 154-164 s (6 updates); watch 166-194 s (15 updates); typical none
+B2 (empty chair), python: rate shown in 0 of 166 updates; urgent 152-200 s (25 updates); watch 202-232 s (16 updates); typical none

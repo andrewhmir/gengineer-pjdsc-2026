@@ -39,6 +39,18 @@ human-readable summary a judge or a returning teammate can read without walking 
   the records use — the MIMIC-III Waveform Database, CSI-Bench, and the High-Gamma Dataset —
   with their descriptor and platform citations, are recorded in `docs/SOURCES.md`. No data
   is committed.
+- Hinigram v1.3.3 research bundle mirrored at `notebooks/research/hinigram-v1.3.3/`: the
+  audited CSI pipeline (`hinigram_live.py`, `hinigram_eval.py`, the DSP and style modules),
+  the training and validation study tables with their MLflow run artefacts, the injection
+  bench and waiting-room board sources, the firmware placement guide, and the literature
+  audit the rebuild answers. `docs/DATA.md` caps a committed file at 1 MB, so the 13 files
+  over the cap — both notebooks, the two raw session recordings, the held-out prediction
+  rows, the window-table archives, the built boards, and the packet fixture — are not
+  committed; they stay in a local `data/raw/hinigram-v1.3.3/`, and
+  `notebooks/research/README.md` lists them and the restore step. The raw recordings stay out
+  of the repository regardless of size, per the RA 10173 rule in `docs/DATA.md`. Nothing in
+  the directory is linted, formatted, or executed: `notebooks/research` is excluded from
+  `ruff` and from the `notebooks` CI job by path.
 
 ### Changed
 

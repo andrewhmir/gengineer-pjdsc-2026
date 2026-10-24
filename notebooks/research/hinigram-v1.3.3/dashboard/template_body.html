@@ -1,0 +1,174 @@
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <!-- worn stamp-pad ink: speckles the stamp so it reads as pressed, not printed -->
+    <filter id="ink" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="7" result="n"/>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  -2.4 0 0 0 2.15" result="m"/>
+      <feComposite in="SourceGraphic" in2="m" operator="in" result="s"/>
+      <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="1" seed="3" result="w"/>
+      <feDisplacementMap in="s" in2="w" scale="2.2" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <!-- a chair with no reliable reading is hatched, so the state never rests on colour alone -->
+    <pattern id="chairhatch" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="9" height="9" style="fill:var(--noread-tint)"/><path d="M0 0 V9" style="stroke:var(--pencil)" stroke-width="1.8"/>
+    </pattern>
+  </defs>
+</svg>
+
+<header class="mast">
+  <div class="wrap">
+    <div class="inner">
+      <div class="mark">
+        <svg width="52" height="30" viewBox="0 0 58 34" aria-hidden="true">
+          <path d="M1 20 H9 C12 20 13 6 17 6 C21 6 22 29 26 29 C30 29 31 11 35 11 C38 11 39 20 42 20 H51" fill="none" style="stroke:var(--ink)" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="53" cy="20" r="3.4" style="fill:var(--brand)"/>
+        </svg>
+        <h1>Hinigram</h1>
+      </div>
+      <p class="tag" data-i18n="tagline">Breathing watch for the waiting area</p>
+      <div class="langs" role="group" aria-label="Language">
+        <button type="button" id="lang-en" aria-pressed="true">English</button>
+        <button type="button" id="lang-fil" aria-pressed="false" lang="fil">Filipino</button>
+      </div>
+    </div>
+    <p class="disclaimer" role="note"><b data-i18n="noteMark">Paalala</b><span data-i18n="disclaimer">This is a screening aid, not a diagnosis. A nurse or doctor decides. It reads breathing movement from Wi-Fi signals; it does not use a camera.</span></p>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <section class="controls" aria-label="Data source and playback">
+      <div class="srcs" role="group" aria-label="Data source">
+        <button type="button" id="src-demo" aria-pressed="true"><span data-i18n="srcDemo">Demo scenario</span><small data-i18n="srcDemoSub">real packets, simulated breathing</small></button>
+        <button type="button" id="src-sample" aria-pressed="false"><span data-i18n="srcSample">Format sample</span><small data-i18n="srcSampleSub">real recording</small></button>
+        <button type="button" id="src-file" aria-pressed="false"><span data-i18n="srcFile">Open a CSV file</span><small data-i18n="srcFileSub">from the ESP32 receiver</small></button>
+        <button type="button" id="src-live" aria-pressed="false"><span data-i18n="srcLive">Connect receiver</span><small data-i18n="srcLiveSub">USB, Chrome or Edge</small></button>
+        <label class="baudpick"><span data-i18n="baudLabel">Serial speed</span>
+          <select id="live-baud"><option value="921600">921,600</option><option value="2000000">2,000,000</option></select></label>
+        <button type="button" id="src-inject" aria-pressed="false"><span data-i18n="srcInject">Injection bench</span><small data-i18n="srcInjectSub">add known breathing, live</small></button>
+        <input type="file" id="file-input" accept=".csv,.txt,.tsv,text/csv,text/plain" hidden>
+      </div>
+      <div class="play">
+        <button type="button" class="playbtn" id="btn-play" aria-label="Pause">
+          <svg id="ico-pause" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="1" width="4" height="14" fill="currentColor"/><rect x="10" y="1" width="4" height="14" fill="currentColor"/></svg>
+          <svg id="ico-play" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" hidden><path d="M3 1 L14 8 L3 15 Z" fill="currentColor"/></svg>
+        </button>
+        <input type="range" id="scrub" min="30" max="173" step="0.5" value="128" aria-label="Playback position">
+        <span class="clock" id="clock">2:08 / 2:53</span>
+        <select id="speed" aria-label="Playback speed">
+          <option value="1">1×</option><option value="2">2×</option><option value="4">4×</option><option value="8">8×</option>
+        </select>
+      </div>
+    </section>
+    <p class="srcmeta" id="srcmeta"></p>
+    <p class="msg" id="msg" hidden></p>
+
+    <!-- injection bench: shown only when the source is "Injection bench" -->
+    <section class="bench" id="bench" aria-labelledby="bench-h" hidden>
+      <div class="benchhead">
+        <h2 id="bench-h" data-i18n="benchH">Injection bench</h2>
+        <p data-i18n="benchSub">Adds breathing of a known rate to Wi-Fi packets while they stream, so you can see what the board does with it. Change any chair while it runs.</p>
+      </div>
+      <div class="benchctl">
+        <label><span data-i18n="bgLabel">Packets from</span>
+          <select id="bench-bg">
+            <option value="sample" data-i18n="bgSample">Format sample, all of it (people move from 1:05 to 1:50)</option>
+            <option value="quiet" data-i18n="bgQuiet">Format sample, quiet stretch only (1:52 to 2:53)</option>
+            <option value="csv" data-i18n="bgCsv">A CSV file from your receiver</option>
+            <option value="receiver" data-i18n="bgReceiver">Your receiver, live over USB</option>
+          </select></label>
+        <label><span data-i18n="chairsLabel">Chairs</span>
+          <select id="bench-n"><option value="3">3</option><option value="8">8</option><option value="12" selected>12</option></select></label>
+        <label id="bench-baud-l" hidden><span data-i18n="baudLabel">Serial speed</span>
+          <select id="bench-baud"><option value="921600">921,600</option><option value="2000000">2,000,000</option></select></label>
+        <label><span data-i18n="presetLabel">Scenario</span><select id="bench-preset"></select></label>
+        <label><span data-i18n="speedLabel">Speed</span>
+          <select id="bench-speed"><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option></select></label>
+        <div class="benchbtns">
+          <button type="button" class="ack go" id="bench-go" data-i18n="benchStart">Start</button>
+          <button type="button" class="linkbtn" id="bench-reset" data-i18n="benchReset" hidden>Start over</button>
+        </div>
+        <p class="benchclock" aria-live="off"><span id="bench-clock"></span><span id="bench-load"></span></p>
+        <input type="file" id="bench-file" accept=".csv,.txt,.tsv,text/csv,text/plain" hidden>
+      </div>
+      <p class="benchnote" id="bench-note"></p>
+      <div class="benchgrid" id="bench-grid" hidden>
+        <section class="chairctl" id="chairctl" aria-label="Selected chair"></section>
+        <section class="benchroom" aria-labelledby="bench-table-h">
+          <h3 id="bench-table-h" data-i18n="tableH">Every chair: what was put in, and what the board shows</h3>
+          <div class="tablewrap"><table id="bench-table"></table></div>
+        </section>
+      </div>
+      <section class="benchscore" id="bench-score" aria-labelledby="score-h" hidden></section>
+    </section>
+  </div>
+
+  <section class="roomband" aria-labelledby="hero-big">
+    <div class="wrap">
+      <p class="tape" id="tape" role="note" hidden><b data-i18n="tapeTag">TEST</b><span data-i18n="tape">Simulated breathing added to real Wi-Fi packets. These seats are not patients.</span></p>
+      <div class="hero" id="counts"></div>
+      <ol class="board" id="cards"></ol>
+    </div>
+  </section>
+
+  <div class="wrap">
+    <p class="boardnote" data-i18n="sorted">Each chair has its own ESP32 node. Tap a chair for details.</p>
+    <section class="attn" id="attn" aria-labelledby="attn-h"></section>
+
+    <div class="main">
+      <section class="sheet" id="detail" aria-label="Selected seat"></section>
+      <section class="logbook" aria-labelledby="log-h">
+        <div class="head"><h2 id="log-h" data-i18n="log">What happened</h2><span data-i18n="logSub">Status changes and checks, newest first</span></div>
+        <ul class="log" id="log"></ul>
+      </section>
+    </div>
+
+    <div class="second">
+      <section class="plan" aria-labelledby="room-h">
+        <div class="head"><h2 id="room-h" data-i18n="room">Where the sensors are</h2><span data-i18n="schematic">Plan view, not to scale. Each chair's node sits on its backrest, so its link to a corner receiver passes through the person sitting there.</span></div>
+        <svg id="map" viewBox="0 0 640 300" role="group" aria-label="Floor plan"></svg>
+      </section>
+      <details class="eng" id="eng">
+        <summary data-i18n="eng">For engineers: sensor health</summary>
+        <div class="tablewrap"><table id="healthtable"></table></div>
+        <div class="legend" id="eng-legend" style="margin-top:14px"></div>
+        <div class="engcharts">
+          <figure><figcaption data-i18n="engRate">Packets per second (5 s window)</figcaption><canvas id="eng-rate" height="150"></canvas></figure>
+          <figure><figcaption data-i18n="engRssi">Signal strength (dBm)</figcaption><canvas id="eng-rssi" height="150"></canvas></figure>
+          <figure><figcaption data-i18n="engSteps">Gain steps (% of packets)</figcaption><canvas id="eng-steps" height="150"></canvas></figure>
+          <figure><figcaption data-i18n="engAct">Movement index (above 1 means movement)</figcaption><canvas id="eng-act" height="150"></canvas></figure>
+        </div>
+        <p id="engnote"></p>
+      </details>
+    </div>
+
+    <details class="check" id="check">
+      <summary data-i18n="checkH">Check accuracy with paced breathing</summary>
+      <p class="checkintro" data-i18n="checkIntro">Hinigram runs on Wi-Fi signals alone.</p>
+      <div class="checkctl">
+        <label><span data-i18n="checkSeat">Chair</span><select id="pace-seat"></select></label>
+        <label><span data-i18n="checkPlan">Steps</span><select id="pace-plan"><option value="standard">Standard</option><option value="short">Short</option></select></label>
+        <button type="button" class="ack" id="pace-start">Start the pacer</button>
+        <button type="button" class="linkbtn" id="pace-load" data-i18n="checkLoad" hidden>Load the pacer log for this file</button>
+        <input type="file" id="pace-input" accept=".json,application/json" hidden>
+      </div>
+      <p class="checksafe" data-i18n="checkSafe">Breathe gently, not deeply. Stop if you feel dizzy or short of breath.</p>
+      <div class="pacer" id="pacer" hidden>
+        <svg viewBox="0 0 240 240" aria-hidden="true"><circle id="pace-ring" cx="120" cy="120" r="60"/></svg>
+        <p class="cue" id="pace-cue" aria-live="polite"></p>
+        <p class="step" id="pace-step"></p>
+      </div>
+      <div id="pace-results"></div>
+    </details>
+  </div>
+</main>
+
+<div class="sr-only" aria-live="polite" id="announce"></div>
+<div class="sr-only" aria-live="assertive" id="announce-urgent"></div>
+
+<footer>
+  <div class="wrap"><div>
+    <span id="foot1"></span>
+    <span data-i18n="foot2">Thresholds follow NEWS2 for adults and the WHO IMCI fast-breathing cut-offs for children under 5. They still need review by Filipino clinicians before any use with patients.</span>
+  </div></div>
+</footer>

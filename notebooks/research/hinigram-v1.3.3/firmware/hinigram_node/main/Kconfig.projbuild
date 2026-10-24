@@ -1,0 +1,14 @@
+menu "Hinigram chair node"
+    config HINIGRAM_NODE_ID
+        int "Node ID (1 to 254); the node sends from 1a:00:00:00:00:<ID in hex>"
+        range 1 254
+        default 1
+    config HINIGRAM_CHANNEL
+        int "Wi-Fi channel (must match the receivers)"
+        range 1 13
+        default 6
+    config HINIGRAM_SEND_HZ
+        int "Packets per second"
+        range 5 100
+        default 30
+endmenu

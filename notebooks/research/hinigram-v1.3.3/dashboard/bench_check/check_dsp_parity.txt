@@ -1,0 +1,8 @@
+ok   features identical on 1a:00:00:00:00:01 (1732 samples x 102 channels)
+ok   features identical on 1a:00:00:00:00:02 (1732 samples x 102 channels)
+ok   features identical on 1a:00:00:00:00:03 (1732 samples x 102 channels)
+ok   features identical with ties, -0, NaN and spikes
+ok   whole-file analysis identical on the format sample
+ok   live pipeline identical on 200 s of a 3-chair stream (v1.3.2 83.2 s, v1.3.3 22.5 s: 3.7x faster)
+ok   a tab-separated line parses to the same packet
+all checks passed
