@@ -11,6 +11,15 @@
  *
  * Without a stored ID the node takes one from its chip address, so two unconfigured boards rarely clash, and says so.
  *
+ * At start-up, and in answer to "hinigram info", it prints one HINIGRAM_TX line for the console: version, ID, whether
+ * the ID is stored, addresses, ESP-IDF version, build time and the radio settings, for example
+ *
+ *     HINIGRAM_TX,version=1.1,id=7,id_stored=1,mac=1a:00:00:00:00:07,chip=d0:ef:76:56:e8:68,idf=v5.3.2,
+ *     built=Oct 24 2026 18:02:11,channel=6,bandwidth=HT20,phy=MCS0_LGI,send_hz=30,jitter_us=2000,packet=1
+ *
+ * (one line). The radio settings are one string in the image, s_params, which the release workflow also reads from
+ * the built image to record what each version sends.
+ *
  * Otherwise as the v1.3.3 bundle's hinigram_node, itself based on Espressif's esp-csi csi_send example (Apache-2.0 /
  * CC0): 20 MHz channel, MCS0, CONFIG_HINIGRAM_SEND_HZ packets a second from 1a:00:00:00:00:<ID>, a steady rate with up
  * to 2 ms of random offset so nodes do not transmit in lockstep, and the packet counter where receivers read it.
@@ -33,6 +42,16 @@
 #include "esp_app_desc.h"
 #include "esp_idf_version.h"
 #include "driver/uart.h"
+
+#define HG_STR_(x) #x
+#define HG_STR(x) HG_STR_(x)
+#define HG_JITTER_US 2000      /* the most random offset before each packet */
+#define HG_PACKET_VERSION 1    /* the layout of hinigram_pkt_t */
+
+/* The radio settings this image sends with. bandwidth and phy name the values wifi_init and espnow_init set. */
+static const char s_params[] = "channel=" HG_STR(CONFIG_HINIGRAM_CHANNEL) ",bandwidth=HT20,phy=MCS0_LGI,send_hz="
+                               HG_STR(CONFIG_HINIGRAM_SEND_HZ) ",jitter_us=" HG_STR(HG_JITTER_US)
+                               ",packet=" HG_STR(HG_PACKET_VERSION);
 
 static const char *TAG = "hinigram_node";
 static const uint8_t s_broadcast[6] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
@@ -78,7 +97,10 @@ static esp_err_t store_id(int id)
     return err;
 }
 
-/* The two lines the console's Identify reads: the node line every Hinigram node prints, then this firmware's own. */
+/*
+ * The lines the console's Identify reads: the node line every Hinigram node prints, this firmware's own, and the
+ * HINIGRAM_TX line with everything in one place.
+ */
 static void announce(void)
 {
     const esp_app_desc_t *app = esp_app_get_description();
@@ -86,6 +108,10 @@ static void announce(void)
              s_id, CONFIG_HINIGRAM_SEND_HZ, CONFIG_HINIGRAM_CHANNEL, MAC2STR(s_mac));
     ESP_LOGW(TAG, "universal v%s, chip " MACSTR ", id %s, IDF %s", app->version, MAC2STR(s_chip_mac),
              s_id_stored ? "stored" : "from the chip address (set one with: hinigram id N)", esp_get_idf_version());
+    printf("HINIGRAM_TX,version=%s,id=%d,id_stored=%d,mac=" MACSTR ",chip=" MACSTR ",idf=%s,built=%s %s,%s\n",
+           app->version, s_id, s_id_stored ? 1 : 0, MAC2STR(s_mac), MAC2STR(s_chip_mac), esp_get_idf_version(),
+           app->date, app->time, s_params);
+    fflush(stdout);
 }
 
 /* Reads "hinigram id N" and "hinigram info" from the USB serial console. */
@@ -177,11 +203,11 @@ void app_main(void)
     espnow_init();
     announce();
 
-    hinigram_pkt_t pkt = {.seq = 0, .node = s_id, .version = 1};
+    hinigram_pkt_t pkt = {.seq = 0, .node = s_id, .version = HG_PACKET_VERSION};
     const TickType_t period = pdMS_TO_TICKS(1000 / CONFIG_HINIGRAM_SEND_HZ);
     TickType_t last = xTaskGetTickCount();
     for (;;) {
-        esp_rom_delay_us(esp_random() % 2000);   /* up to 2 ms of jitter keeps neighbouring nodes out of lockstep */
+        esp_rom_delay_us(esp_random() % HG_JITTER_US);   /* random offset keeps neighbouring nodes out of lockstep */
         esp_err_t err = esp_now_send(s_broadcast, (const uint8_t *)&pkt, sizeof(pkt));
         if (err != ESP_OK && pkt.seq % 300 == 0) {
             ESP_LOGW(TAG, "send failed: %s", esp_err_to_name(err));

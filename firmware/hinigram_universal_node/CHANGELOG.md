@@ -12,6 +12,16 @@ GitHub builds each version and publishes it as the release `universal-v<version>
 The release fails if the code changed while [`version.txt`](version.txt) did not, so a published version never
 changes.
 
+## 1.1 (2026-10-24)
+
+- The transmitter prints a `HINIGRAM_TX` line at start-up and in answer to `hinigram info`: its version, ID, whether
+  the ID is stored, its address and chip address, the ESP-IDF version, the build time, and its radio settings
+  (channel, bandwidth, PHY rate, packets a second, the most random offset, packet layout). The console's Boards panel
+  shows these for each board and compares them with any version it could write.
+- The radio settings are one string in the image, which the release workflow reads to record each version's
+  settings in its `build-info.json`.
+- Nothing the board sends has changed: same radio settings, timing and packet as 1.0. The receiver is unchanged.
+
 ## 1.0 (2026-10-24)
 
 - First version: one transmitter image for any number of chair nodes. The node ID (1 to 254) is kept in the board's
