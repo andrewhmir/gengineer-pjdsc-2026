@@ -29,10 +29,16 @@
   };
 
   function defaultConfig(profile) {
+    const prof = profile || 'adult';
+    const band = (PROFILES[prof] || PROFILES.adult).band;
     return {
-      profile: profile || 'adult', win_s: 30, hop_s: 2, fs: 10, n_pcs: 3,
+      profile: prof, win_s: 30, hop_s: 2, fs: 10, n_pcs: 3,
       peak_halfwidth_hz: 0.04, min_prominence: 0.5, min_acf: 0.35, agree_bpm: 2.5,
       max_gap_frac: 0.10, min_clean_s: 16, recent_s: 6, recent_min_ratio: 0.45,
+      // Receive AGC and slow channel drift put most of their power below ~0.18 Hz, which is
+      // inside the adult band's lower edge. Estimate above it (never above the clinical band
+      // start) so the spectrum peak is breathing, not drift.
+      drift_hz: Math.max(band[0], 0.18),
     };
   }
 
@@ -665,9 +671,10 @@
   function estimateWindow(F, s0, e, cfg) {
     const fs = F.fs, Cn = F.Cn, n = e - s0;
     const band = PROFILES[cfg.profile].band;
-    let lo = Math.max(band[0], 2.0 / (n / fs));
+    const driftHz = cfg.drift_hz !== undefined ? cfg.drift_hz : Math.max(band[0], 0.18);
+    let lo = Math.max(band[0], driftHz, 2.0 / (n / fs));
     const hi = band[1];
-    const filt = bandSOS(cfg, fs, lo);
+    const filt = bandSOS(cfg, fs, lo / 0.8); // bandSOS places its corner at 0.8 * its argument
     // demean + zero-phase band-pass, per channel
     const Xf = new Float64Array(n * Cn);
     const col = new Float64Array(n);
