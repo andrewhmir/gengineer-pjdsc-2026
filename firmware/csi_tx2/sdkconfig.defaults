@@ -1,0 +1,9 @@
+# Hand-maintained project defaults (idf.py save-defconfig output). sdkconfig itself is generated.
+# FREERTOS_HZ=1000 is required for the 30 Hz frame cadence: at the 100 Hz default, usleep(33333)
+# rounds to 4 ticks (40 ms) and the transmitters run at 25 Hz.
+#
+CONFIG_PARTITION_TABLE_OFFSET=0xa000
+CONFIG_ESP_WIFI_DYNAMIC_TX_BUFFER_NUM=128
+CONFIG_ESP_WIFI_CSI_ENABLED=y
+CONFIG_ESP_WIFI_AMPDU_TX_ENABLED=n
+CONFIG_FREERTOS_HZ=1000
